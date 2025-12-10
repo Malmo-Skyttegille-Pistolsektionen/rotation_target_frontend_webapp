@@ -5,6 +5,10 @@ export const TimelineType = Object.freeze({
   Field: "field"
 });
 
+// Threshold for automatic timeline type detection (in milliseconds)
+// Events with durations at or below this threshold will use Field timeline (time-scaled)
+const FIELD_TIMELINE_THRESHOLD_MS = 30000; // 30 seconds
+
 let currentSeriesIndex = null;
 let currentEventIndex = null;
 let timelineData = null;
@@ -27,10 +31,9 @@ export function detectTimelineType(program) {
     }
   }
 
-  // If max duration is 30 seconds or less, use Field timeline (time-scaled)
+  // If max duration is at or below threshold, use Field timeline (time-scaled)
   // Otherwise use Default timeline (event-based)
-  const THRESHOLD_MS = 30000; // 30 seconds
-  return maxDuration <= THRESHOLD_MS ? TimelineType.Field : TimelineType.Default;
+  return maxDuration <= FIELD_TIMELINE_THRESHOLD_MS ? TimelineType.Field : TimelineType.Default;
 }
 
 // Main timeline renderer with enum type selection

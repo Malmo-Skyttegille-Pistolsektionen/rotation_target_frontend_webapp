@@ -167,27 +167,21 @@ function onProgramContainerClick(e) {
 }
 
 export async function initializeProgramsTab() {
-    // Initialize the program editor modal
-    initializeProgramEditorModal();
-    
-    // Attach save handler to the editor's save button
-    const saveEditorBtn = document.getElementById('save-editor-btn');
-    if (saveEditorBtn) {
-        saveEditorBtn.addEventListener('click', async () => {
-            const result = await saveProgramFromEditor();
-            if (result) {
-                try {
-                    await uploadProgram(result.program, result.originalId);
-                    alert(result.originalId ? 'Program updated successfully!' : 'Program created successfully!');
-                    await refreshProgramsList();
-                    document.getElementById('program-editor-modal').classList.add('hidden');
-                } catch (err) {
-                    alert(`Failed to save program: ${err.message}`);
-                    console.error('Save error:', err);
-                }
+    // Initialize the program editor modal with save callback
+    initializeProgramEditorModal(async () => {
+        const result = saveProgramFromEditor();
+        if (result) {
+            try {
+                await uploadProgram(result.program, result.originalId);
+                alert(result.originalId ? 'Program updated successfully!' : 'Program created successfully!');
+                await refreshProgramsList();
+                document.getElementById('program-editor-modal').classList.add('hidden');
+            } catch (err) {
+                alert(`Failed to save program: ${err.message}`);
+                console.error('Save error:', err);
             }
-        });
-    }
+        }
+    });
     
     if (!programsTabListenersAdded) {
         if (addProgramBtn) addProgramBtn.addEventListener("click", onAddProgramClick);

@@ -206,7 +206,12 @@ function attachEditorListeners() {
     
     document.getElementById('program-id').addEventListener('input', (e) => {
         const value = e.target.value;
-        editorState.program.id = value ? parseInt(value) : null;
+        if (value) {
+            const id = parseInt(value);
+            editorState.program.id = !isNaN(id) ? id : null;
+        } else {
+            editorState.program.id = null;
+        }
     });
     
     document.getElementById('program-readonly').addEventListener('change', (e) => {
@@ -258,7 +263,10 @@ function attachEditorListeners() {
         } else if (target.classList.contains('event-duration')) {
             const seriesIndex = parseInt(target.dataset.seriesIndex);
             const eventIndex = parseInt(target.dataset.eventIndex);
-            editorState.program.series[seriesIndex].events[eventIndex].duration = parseInt(target.value);
+            const duration = parseInt(target.value);
+            if (!isNaN(duration) && duration >= 0) {
+                editorState.program.series[seriesIndex].events[eventIndex].duration = duration;
+            }
         } else if (target.classList.contains('event-command')) {
             const seriesIndex = parseInt(target.dataset.seriesIndex);
             const eventIndex = parseInt(target.dataset.eventIndex);
@@ -276,7 +284,7 @@ function attachEditorListeners() {
 /**
  * Save the program
  */
-export async function saveProgramFromEditor() {
+export function saveProgramFromEditor() {
     const program = editorState.program;
     
     // Validation
@@ -310,8 +318,9 @@ export async function saveProgramFromEditor() {
 
 /**
  * Initialize the editor modal in the DOM
+ * @param {Function} onSaveCallback - Callback function to handle program save
  */
-export function initializeProgramEditorModal() {
+export function initializeProgramEditorModal(onSaveCallback) {
     // Check if modal already exists
     if (document.getElementById('program-editor-modal')) {
         return;
@@ -339,4 +348,9 @@ export function initializeProgramEditorModal() {
     // Attach close and save listeners
     document.getElementById('close-editor-btn').addEventListener('click', closeProgramEditor);
     document.getElementById('cancel-editor-btn').addEventListener('click', closeProgramEditor);
+    
+    // Attach save listener if callback provided
+    if (onSaveCallback) {
+        document.getElementById('save-editor-btn').addEventListener('click', onSaveCallback);
+    }
 }

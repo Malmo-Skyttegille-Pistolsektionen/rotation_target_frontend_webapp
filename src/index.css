@@ -963,6 +963,8 @@ footer {
 button.small {
   padding: 0.4rem 0.8rem;
   font-size: 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 button.secondary {

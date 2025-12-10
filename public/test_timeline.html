@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeline Test</title>
+  <link rel="stylesheet" href="/src/index.css" />
+  <style>
+    body { padding: 20px; }
+    .test-section { 
+      margin: 30px 0; 
+      padding: 20px; 
+      border: 2px solid #ccc; 
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .test-section h2 { 
+      color: #333; 
+      margin-top: 0;
+    }
+    .info {
+      padding: 10px;
+      margin: 10px 0;
+      background: #e0f7fa;
+      border-left: 4px solid #00acc1;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Timeline Mode Detection Test</h1>
+  
+  <div class="test-section">
+    <h2>Fält Program (ID 40)</h2>
+    <div class="info">Expected: Field Timeline (time-scaled, max duration 10s)</div>
+    <div id="falt-timeline"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Precision Program (ID 20)</h2>
+    <div class="info">Expected: Default Timeline (event-based, max duration 297s)</div>
+    <div id="precision-timeline"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Militär Snabbmatch (ID 1)</h2>
+    <div class="info">Expected: Default Timeline (event-based, max duration 60s)</div>
+    <div id="militar-timeline"></div>
+  </div>
+
+  <script type="module">
+    import { renderTimeline, detectTimelineType } from '/src/ui/views/timeline.js';
+    
+    async function loadProgram(id) {
+      const response = await fetch(`/test/data/programs/${id}.json`);
+      return response.json();
+    }
+    
+    async function testTimelines() {
+      try {
+        // Test Fält
+        const falt = await loadProgram(40);
+        const faltType = detectTimelineType(falt);
+        console.log('Fält timeline type:', faltType);
+        document.querySelector('#falt-timeline').previousElementSibling.innerHTML += 
+          `<br>Detected: ${faltType}`;
+        renderTimeline(document.getElementById('falt-timeline'), falt);
+        
+        // Test Precision
+        const precision = await loadProgram(20);
+        const precisionType = detectTimelineType(precision);
+        console.log('Precision timeline type:', precisionType);
+        document.querySelector('#precision-timeline').previousElementSibling.innerHTML += 
+          `<br>Detected: ${precisionType}`;
+        renderTimeline(document.getElementById('precision-timeline'), precision);
+        
+        // Test Militär
+        const militar = await loadProgram(1);
+        const militarType = detectTimelineType(militar);
+        console.log('Militär timeline type:', militarType);
+        document.querySelector('#militar-timeline').previousElementSibling.innerHTML += 
+          `<br>Detected: ${militarType}`;
+        renderTimeline(document.getElementById('militar-timeline'), militar);
+      } catch (err) {
+        console.error('Error:', err);
+        document.body.innerHTML += `<div style="color: red; padding: 20px;">Error: ${err.message}</div>`;
+      }
+    }
+    
+    testTimelines();
+  </script>
+</body>
+</html>

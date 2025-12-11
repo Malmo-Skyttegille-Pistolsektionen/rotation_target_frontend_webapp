@@ -3,11 +3,14 @@
  * Allows users to create and edit shooting programs visually
  */
 
+import { fetchAudios } from '../../apis/rest-client.js';
+
 // State for the editor
 let editorState = {
     program: null,
     isEditing: false,
-    originalProgramId: null
+    originalProgramId: null,
+    audios: [] // Cache of available audios
 };
 
 /**
@@ -40,7 +43,7 @@ function createEmptySeries() {
 function createEmptyEvent() {
     return {
         duration: 1000,
-        command: "show",
+        command: null, // Command is optional
         audio_ids: []
     };
 }
@@ -48,10 +51,31 @@ function createEmptyEvent() {
 /**
  * Open the editor with a program (for editing or creating new)
  */
-export function openProgramEditor(program = null) {
+export async function openProgramEditor(program = null) {
     editorState.isEditing = program !== null;
     editorState.originalProgramId = program ? program.id : null;
     editorState.program = program ? JSON.parse(JSON.stringify(program)) : createEmptyProgram();
+    
+    // Load audios if not already cached
+    if (editorState.audios.length === 0) {
+        try {
+            const response = await fetchAudios();
+            editorState.audios = response.audios || [];
+        } catch (err) {
+            console.error('Failed to load audios:', err);
+            // Use mock data for testing when API is unavailable
+            editorState.audios = [
+                { id: 1, title: "1" },
+                { id: 10, title: "10" },
+                { id: 21, title: "Banan är öppen" },
+                { id: 26, title: "Ladda!" },
+                { id: 31, title: "Färdiga!" },
+                { id: 33, title: "Eld!" },
+                { id: 34, title: "Eld upphör!" },
+                { id: 50, title: "Provserie" }
+            ];
+        }
+    }
     
     renderEditor();
     document.getElementById('program-editor-modal').classList.remove('hidden');
@@ -178,17 +202,45 @@ function renderEvents(events, seriesIndex) {
                 <div class="form-group inline">
                     <label>Command:</label>
                     <select class="event-command" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                        <option value="" ${!event.command ? 'selected' : ''}>None</option>
                         <option value="show" ${event.command === 'show' ? 'selected' : ''}>Show</option>
                         <option value="hide" ${event.command === 'hide' ? 'selected' : ''}>Hide</option>
                     </select>
                 </div>
-                <div class="form-group inline">
+                <div class="form-group audio-ids-group">
                     <label>Audio IDs:</label>
-                    <input type="text" class="event-audio-ids" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" value="${(event.audio_ids || []).join(', ')}" placeholder="e.g., 1, 2, 3" />
+                    <div class="audio-search-container">
+                        <input type="text" class="audio-search-input" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" placeholder="Search audios by ID or title..." />
+                        <div class="audio-suggestions" data-series-index="${seriesIndex}" data-event-index="${eventIndex}"></div>
+                    </div>
+                    <div class="selected-audios" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                        ${renderSelectedAudios(event.audio_ids || [], seriesIndex, eventIndex)}
+                    </div>
                 </div>
             </div>
         </div>
     `).join('');
+}
+
+/**
+ * Render selected audio IDs for an event
+ */
+function renderSelectedAudios(audioIds, seriesIndex, eventIndex) {
+    if (audioIds.length === 0) {
+        return '<p class="empty-message small">No audios selected</p>';
+    }
+    
+    return audioIds.map((audioId, audioIndex) => {
+        const audio = editorState.audios.find(a => a.id === audioId);
+        const title = audio ? audio.title : 'Unknown';
+        return `
+            <div class="selected-audio-item" data-audio-index="${audioIndex}" draggable="true">
+                <span class="drag-handle">≡</span>
+                <span class="audio-label">${audioId} - ${title}</span>
+                <button class="remove-audio-btn" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-audio-index="${audioIndex}">×</button>
+            </div>
+        `;
+    }).join('');
 }
 
 /**
@@ -270,15 +322,152 @@ function attachEditorListeners() {
         } else if (target.classList.contains('event-command')) {
             const seriesIndex = parseInt(target.dataset.seriesIndex);
             const eventIndex = parseInt(target.dataset.eventIndex);
-            editorState.program.series[seriesIndex].events[eventIndex].command = target.value;
-        } else if (target.classList.contains('event-audio-ids')) {
-            const seriesIndex = parseInt(target.dataset.seriesIndex);
-            const eventIndex = parseInt(target.dataset.eventIndex);
-            const value = target.value.trim();
-            editorState.program.series[seriesIndex].events[eventIndex].audio_ids = 
-                value ? value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+            const value = target.value;
+            editorState.program.series[seriesIndex].events[eventIndex].command = value || null;
+        } else if (target.classList.contains('audio-search-input')) {
+            handleAudioSearch(target);
         }
     });
+    
+    // Handle audio selection from suggestions
+    seriesContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        
+        // Handle audio suggestion click
+        if (target.classList.contains('audio-suggestion-item')) {
+            const audioId = parseInt(target.dataset.audioId);
+            const seriesIndex = parseInt(target.dataset.seriesIndex);
+            const eventIndex = parseInt(target.dataset.eventIndex);
+            addAudioToEvent(seriesIndex, eventIndex, audioId);
+        }
+        
+        // Handle remove audio button
+        if (target.classList.contains('remove-audio-btn')) {
+            const seriesIndex = parseInt(target.dataset.seriesIndex);
+            const eventIndex = parseInt(target.dataset.eventIndex);
+            const audioIndex = parseInt(target.dataset.audioIndex);
+            removeAudioFromEvent(seriesIndex, eventIndex, audioIndex);
+        }
+    });
+    
+    // Handle drag and drop for audio reordering
+    seriesContainer.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('selected-audio-item')) {
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.innerHTML);
+        }
+    });
+    
+    seriesContainer.addEventListener('dragend', (e) => {
+        if (e.target.classList.contains('selected-audio-item')) {
+            e.target.classList.remove('dragging');
+        }
+    });
+    
+    seriesContainer.addEventListener('dragover', (e) => {
+        if (e.target.closest('.selected-audio-item')) {
+            e.preventDefault();
+            const draggingElement = document.querySelector('.dragging');
+            const targetElement = e.target.closest('.selected-audio-item');
+            
+            if (draggingElement && targetElement && draggingElement !== targetElement) {
+                const container = targetElement.parentElement;
+                const draggingIndex = Array.from(container.children).indexOf(draggingElement);
+                const targetIndex = Array.from(container.children).indexOf(targetElement);
+                
+                if (draggingIndex < targetIndex) {
+                    targetElement.after(draggingElement);
+                } else {
+                    targetElement.before(draggingElement);
+                }
+            }
+        }
+    });
+    
+    seriesContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const draggingElement = document.querySelector('.dragging');
+        if (draggingElement) {
+            const container = draggingElement.parentElement;
+            const seriesIndex = parseInt(container.dataset.seriesIndex);
+            const eventIndex = parseInt(container.dataset.eventIndex);
+            
+            // Get new order of audio IDs
+            const newOrder = Array.from(container.querySelectorAll('.selected-audio-item')).map(item => {
+                const label = item.querySelector('.audio-label').textContent;
+                return parseInt(label.split(' - ')[0]);
+            });
+            
+            editorState.program.series[seriesIndex].events[eventIndex].audio_ids = newOrder;
+        }
+    });
+}
+
+/**
+ * Handle audio search with fuzzy matching
+ */
+function handleAudioSearch(input) {
+    const searchTerm = input.value.toLowerCase();
+    const seriesIndex = parseInt(input.dataset.seriesIndex);
+    const eventIndex = parseInt(input.dataset.eventIndex);
+    const suggestionsContainer = document.querySelector(`.audio-suggestions[data-series-index="${seriesIndex}"][data-event-index="${eventIndex}"]`);
+    
+    if (!searchTerm) {
+        suggestionsContainer.innerHTML = '';
+        suggestionsContainer.classList.remove('active');
+        return;
+    }
+    
+    // Get currently selected audio IDs for this event
+    const selectedIds = editorState.program.series[seriesIndex].events[eventIndex].audio_ids || [];
+    
+    // Fuzzy search in audios
+    const matches = editorState.audios.filter(audio => {
+        if (selectedIds.includes(audio.id)) return false; // Don't show already selected
+        
+        const idStr = audio.id.toString();
+        const titleLower = audio.title.toLowerCase();
+        
+        // Simple fuzzy matching: check if search term characters appear in order
+        return idStr.includes(searchTerm) || titleLower.includes(searchTerm);
+    }).slice(0, 10); // Limit to 10 suggestions
+    
+    if (matches.length === 0) {
+        suggestionsContainer.innerHTML = '<div class="no-suggestions">No matches found</div>';
+    } else {
+        suggestionsContainer.innerHTML = matches.map(audio => `
+            <div class="audio-suggestion-item" data-audio-id="${audio.id}" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                ${audio.id} - ${audio.title}
+            </div>
+        `).join('');
+    }
+    
+    suggestionsContainer.classList.add('active');
+}
+
+/**
+ * Add an audio to an event
+ */
+function addAudioToEvent(seriesIndex, eventIndex, audioId) {
+    const event = editorState.program.series[seriesIndex].events[eventIndex];
+    if (!event.audio_ids) {
+        event.audio_ids = [];
+    }
+    
+    if (!event.audio_ids.includes(audioId)) {
+        event.audio_ids.push(audioId);
+        renderAllSeries();
+    }
+}
+
+/**
+ * Remove an audio from an event
+ */
+function removeAudioFromEvent(seriesIndex, eventIndex, audioIndex) {
+    const event = editorState.program.series[seriesIndex].events[eventIndex];
+    event.audio_ids.splice(audioIndex, 1);
+    renderAllSeries();
 }
 
 /**

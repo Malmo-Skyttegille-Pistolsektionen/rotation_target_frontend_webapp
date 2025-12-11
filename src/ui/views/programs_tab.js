@@ -115,7 +115,7 @@ export async function refreshProgramsList() {
                 const tdJson = document.createElement("td");
                 const showJsonBtn = document.createElement("button");
                 showJsonBtn.textContent = "JSON";
-                showJsonBtn.classList.add("primary");
+                showJsonBtn.classList.add("primary", "json-btn");
                 tdJson.appendChild(showJsonBtn);
                 tr.appendChild(tdJson);
 
@@ -174,7 +174,7 @@ function onProgramContainerClick(e) {
     if (target && target.classList.contains("update-btn")) {
         handleProgramFileInput(id, programTitle);
     }
-    if (target.classList.contains("primary") && target.textContent === "JSON") {
+    if (target && target.classList.contains("json-btn")) {
         getProgram(id)
             .then(fullProgram => {
                 const raw = JSON.stringify(fullProgram, null, 2);

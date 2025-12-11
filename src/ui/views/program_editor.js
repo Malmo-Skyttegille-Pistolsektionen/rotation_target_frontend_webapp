@@ -14,6 +14,8 @@ let editorState = {
     audios: [], // Cache of available audios
     timelineMode: null, // null = auto, TimelineType.Default, or TimelineType.Field
     jsonError: null, // JSON validation error
+    collapsedSeries: new Set(), // Track which series are collapsed in events view
+    selectedEvents: new Set(), // Track selected events for batch operations (format: "seriesIndex-eventIndex")
 };
 
 /**
@@ -94,8 +96,108 @@ export function closeProgramEditor() {
         isEditing: false,
         originalProgramId: null,
         audios: [],
-        timelineMode: null
+        timelineMode: null,
+        collapsedSeries: new Set(),
+        selectedEvents: new Set()
     };
+}
+
+/**
+ * Render the events-based view
+ */
+function renderEventsView() {
+    const container = document.getElementById('events-view-container');
+    const program = editorState.program;
+    
+    if (!program.series || program.series.length === 0) {
+        container.innerHTML = '<p class="empty-message">No series added yet. Switch to Form tab to add series.</p>';
+        return;
+    }
+    
+    container.innerHTML = program.series.map((series, seriesIndex) => {
+        const isCollapsed = editorState.collapsedSeries.has(seriesIndex);
+        const totalEvents = series.events.length;
+        const totalDuration = series.events.reduce((sum, event) => sum + event.duration, 0);
+        
+        return `
+            <div class="events-view-series" data-series-index="${seriesIndex}">
+                <div class="events-view-series-header ${isCollapsed ? 'collapsed' : ''}">
+                    <button class="series-toggle-btn" data-series-index="${seriesIndex}" title="Toggle series">
+                        <span class="toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
+                    </button>
+                    <div class="series-info">
+                        <h4>${series.name || `Series ${seriesIndex + 1}`}</h4>
+                        <span class="series-meta">${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s ${series.optional ? '• Optional' : ''}</span>
+                    </div>
+                    <div class="series-actions">
+                        <button class="secondary small" data-action="add-event-to-series" data-series-index="${seriesIndex}" title="Add Event">+ Event</button>
+                        <button class="secondary small" data-action="duplicate-series" data-series-index="${seriesIndex}" title="Duplicate Series">Duplicate</button>
+                        <button class="delete-btn small icon-only" data-action="delete-series-events-view" data-series-index="${seriesIndex}" title="Delete Series">
+                            <img src="/icons/delete_24_regular.svg" alt="Delete" width="18" height="18" />
+                        </button>
+                    </div>
+                </div>
+                ${!isCollapsed ? `
+                <div class="events-view-list" data-series-index="${seriesIndex}">
+                    ${series.events.length > 0 ? series.events.map((event, eventIndex) => {
+                        const eventId = `${seriesIndex}-${eventIndex}`;
+                        const isSelected = editorState.selectedEvents.has(eventId);
+                        const audioTitles = (event.audio_ids || []).map(id => {
+                            const audio = editorState.audios.find(a => a.id === id);
+                            return audio ? audio.title : `ID ${id}`;
+                        }).join(', ');
+                        
+                        return `
+                            <div class="events-view-item ${isSelected ? 'selected' : ''}" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-event-id="${eventId}" draggable="true">
+                                <div class="event-select">
+                                    <input type="checkbox" class="event-checkbox" data-event-id="${eventId}" ${isSelected ? 'checked' : ''} />
+                                </div>
+                                <div class="event-drag-handle" title="Drag to reorder">≡</div>
+                                <div class="event-details">
+                                    <div class="event-detail-row">
+                                        <span class="event-label">Event ${eventIndex + 1}</span>
+                                        <span class="event-command-badge ${event.command || 'none'}">${event.command ? event.command.toUpperCase() : 'NO CHANGE'}</span>
+                                    </div>
+                                    <div class="event-detail-row secondary">
+                                        <span>Duration: ${event.duration}ms (${(event.duration / 1000).toFixed(1)}s)</span>
+                                        ${audioTitles ? `<span class="audio-badge" title="${audioTitles}">♫ ${(event.audio_ids || []).length} audio${(event.audio_ids || []).length !== 1 ? 's' : ''}</span>` : ''}
+                                    </div>
+                                    ${audioTitles ? `<div class="event-detail-row audio-list">${audioTitles}</div>` : ''}
+                                </div>
+                                <div class="event-actions">
+                                    <button class="secondary small icon-only" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Edit Event">
+                                        <img src="/icons/edit_24_regular.svg" alt="Edit" width="18" height="18" />
+                                    </button>
+                                    <button class="secondary small" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Duplicate Event">Dup</button>
+                                    <button class="delete-btn small icon-only" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
+                                        <img src="/icons/delete_24_regular.svg" alt="Delete" width="18" height="18" />
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : '<p class="empty-message">No events in this series.</p>'}
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+    
+    // Add batch actions bar if any events are selected
+    const selectedCount = editorState.selectedEvents.size;
+    if (selectedCount > 0) {
+        const batchBar = document.createElement('div');
+        batchBar.className = 'batch-actions-bar';
+        batchBar.innerHTML = `
+            <span class="batch-count">${selectedCount} event${selectedCount !== 1 ? 's' : ''} selected</span>
+            <div class="batch-buttons">
+                <button id="batch-delete-btn" class="delete-btn small">Delete Selected</button>
+                <button id="batch-deselect-btn" class="secondary small">Clear Selection</button>
+            </div>
+        `;
+        container.prepend(batchBar);
+    }
+    
+    attachEventsViewListeners();
 }
 
 /**
@@ -107,7 +209,8 @@ function renderEditor() {
     
     container.innerHTML = `
         <div class="editor-tabs">
-            <button class="editor-tab active" data-tab="editor">Editor</button>
+            <button class="editor-tab active" data-tab="editor">Form</button>
+            <button class="editor-tab" data-tab="events">Events</button>
             <button class="editor-tab" data-tab="preview">Preview</button>
             <button class="editor-tab" data-tab="json">JSON</button>
         </div>
@@ -146,6 +249,16 @@ function renderEditor() {
                 <div id="series-container"></div>
                 <button id="add-series-btn" class="primary">+ Add Series</button>
             </div>
+        </div>
+        <div class="editor-tab-content" id="editor-tab-events">
+            <div class="events-view-header">
+                <h3>Event-Based View</h3>
+                <div class="events-view-actions">
+                    <button id="expand-all-series-btn" class="secondary small">Expand All</button>
+                    <button id="collapse-all-series-btn" class="secondary small">Collapse All</button>
+                </div>
+            </div>
+            <div id="events-view-container"></div>
         </div>
         <div class="editor-tab-content" id="editor-tab-preview">
             <div class="preview-controls">
@@ -238,6 +351,11 @@ function attachTabListeners() {
             // If switching to JSON tab, update JSON editor
             if (targetTab === 'json') {
                 updateJsonEditor();
+            }
+            
+            // If switching to events tab, render events view
+            if (targetTab === 'events') {
+                renderEventsView();
             }
         });
     });
@@ -760,6 +878,419 @@ function attachEditorListeners() {
             formatJson(); // formatJson() internally calls validateJson()
         });
     }
+}
+
+/**
+ * Attach event listeners to the events view
+ */
+function attachEventsViewListeners() {
+    const container = document.getElementById('events-view-container');
+    if (!container) return;
+    
+    // Expand/Collapse all buttons
+    const expandAllBtn = document.getElementById('expand-all-series-btn');
+    const collapseAllBtn = document.getElementById('collapse-all-series-btn');
+    
+    if (expandAllBtn) {
+        expandAllBtn.addEventListener('click', () => {
+            editorState.collapsedSeries.clear();
+            renderEventsView();
+        });
+    }
+    
+    if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', () => {
+            editorState.program.series.forEach((_, index) => {
+                editorState.collapsedSeries.add(index);
+            });
+            renderEventsView();
+        });
+    }
+    
+    // Series toggle buttons
+    container.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('.series-toggle-btn');
+        if (toggleBtn) {
+            const seriesIndex = parseInt(toggleBtn.dataset.seriesIndex);
+            if (editorState.collapsedSeries.has(seriesIndex)) {
+                editorState.collapsedSeries.delete(seriesIndex);
+            } else {
+                editorState.collapsedSeries.add(seriesIndex);
+            }
+            renderEventsView();
+            return;
+        }
+        
+        // Handle action buttons
+        const actionBtn = e.target.closest('[data-action]');
+        if (actionBtn) {
+            const action = actionBtn.dataset.action;
+            const seriesIndex = parseInt(actionBtn.dataset.seriesIndex);
+            const eventIndex = parseInt(actionBtn.dataset.eventIndex);
+            
+            if (action === 'add-event-to-series') {
+                editorState.program.series[seriesIndex].events.push(createEmptyEvent());
+                renderEventsView();
+                renderTimelinePreview();
+            } else if (action === 'delete-series-events-view') {
+                if (confirm('Delete this series?')) {
+                    editorState.program.series.splice(seriesIndex, 1);
+                    // Update collapsed series indices
+                    const newCollapsed = new Set();
+                    editorState.collapsedSeries.forEach(idx => {
+                        if (idx < seriesIndex) newCollapsed.add(idx);
+                        else if (idx > seriesIndex) newCollapsed.add(idx - 1);
+                    });
+                    editorState.collapsedSeries = newCollapsed;
+                    renderEventsView();
+                    renderTimelinePreview();
+                }
+            } else if (action === 'duplicate-series') {
+                const clonedSeries = JSON.parse(JSON.stringify(editorState.program.series[seriesIndex]));
+                clonedSeries.name = clonedSeries.name + ' (Copy)';
+                editorState.program.series.splice(seriesIndex + 1, 0, clonedSeries);
+                renderEventsView();
+                renderTimelinePreview();
+            } else if (action === 'edit-event') {
+                openEventEditModal(seriesIndex, eventIndex);
+            } else if (action === 'duplicate-event') {
+                const clonedEvent = JSON.parse(JSON.stringify(editorState.program.series[seriesIndex].events[eventIndex]));
+                editorState.program.series[seriesIndex].events.splice(eventIndex + 1, 0, clonedEvent);
+                renderEventsView();
+                renderTimelinePreview();
+            } else if (action === 'delete-event-events-view') {
+                if (confirm('Delete this event?')) {
+                    editorState.program.series[seriesIndex].events.splice(eventIndex, 1);
+                    renderEventsView();
+                    renderTimelinePreview();
+                }
+            }
+        }
+    });
+    
+    // Event checkboxes for batch selection
+    container.addEventListener('change', (e) => {
+        if (e.target.classList.contains('event-checkbox')) {
+            const eventId = e.target.dataset.eventId;
+            if (e.target.checked) {
+                editorState.selectedEvents.add(eventId);
+            } else {
+                editorState.selectedEvents.delete(eventId);
+            }
+            renderEventsView();
+        }
+    });
+    
+    // Batch action buttons
+    const batchDeleteBtn = document.getElementById('batch-delete-btn');
+    const batchDeselectBtn = document.getElementById('batch-deselect-btn');
+    
+    if (batchDeleteBtn) {
+        batchDeleteBtn.addEventListener('click', () => {
+            if (confirm(`Delete ${editorState.selectedEvents.size} selected event(s)?`)) {
+                // Convert selected event IDs to indices
+                const toDelete = Array.from(editorState.selectedEvents).map(id => {
+                    const [seriesIdx, eventIdx] = id.split('-').map(Number);
+                    return { seriesIdx, eventIdx };
+                });
+                
+                // Sort by series then event index in reverse to delete from end first
+                toDelete.sort((a, b) => {
+                    if (a.seriesIdx !== b.seriesIdx) return b.seriesIdx - a.seriesIdx;
+                    return b.eventIdx - a.eventIdx;
+                });
+                
+                // Delete events
+                toDelete.forEach(({ seriesIdx, eventIdx }) => {
+                    if (editorState.program.series[seriesIdx] && 
+                        editorState.program.series[seriesIdx].events[eventIdx]) {
+                        editorState.program.series[seriesIdx].events.splice(eventIdx, 1);
+                    }
+                });
+                
+                editorState.selectedEvents.clear();
+                renderEventsView();
+                renderTimelinePreview();
+            }
+        });
+    }
+    
+    if (batchDeselectBtn) {
+        batchDeselectBtn.addEventListener('click', () => {
+            editorState.selectedEvents.clear();
+            renderEventsView();
+        });
+    }
+    
+    // Drag and drop for event reordering
+    container.addEventListener('dragstart', (e) => {
+        const eventItem = e.target.closest('.events-view-item');
+        if (eventItem) {
+            eventItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', eventItem.dataset.eventId);
+        }
+    });
+    
+    container.addEventListener('dragend', (e) => {
+        const eventItem = e.target.closest('.events-view-item');
+        if (eventItem) {
+            eventItem.classList.remove('dragging');
+        }
+    });
+    
+    container.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector('.events-view-item.dragging');
+        const targetItem = e.target.closest('.events-view-item');
+        
+        if (draggingItem && targetItem && draggingItem !== targetItem) {
+            const targetSeriesIndex = parseInt(targetItem.dataset.seriesIndex);
+            const draggingSeriesIndex = parseInt(draggingItem.dataset.seriesIndex);
+            
+            // Only allow reordering within the same series
+            if (targetSeriesIndex === draggingSeriesIndex) {
+                const container = targetItem.parentElement;
+                const allItems = Array.from(container.querySelectorAll('.events-view-item'));
+                const draggingIndex = allItems.indexOf(draggingItem);
+                const targetIndex = allItems.indexOf(targetItem);
+                
+                if (draggingIndex < targetIndex) {
+                    targetItem.after(draggingItem);
+                } else {
+                    targetItem.before(draggingItem);
+                }
+            }
+        }
+    });
+    
+    container.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector('.events-view-item.dragging');
+        
+        if (draggingItem) {
+            const seriesIndex = parseInt(draggingItem.dataset.seriesIndex);
+            const listContainer = draggingItem.parentElement;
+            
+            // Get new order of events
+            const eventItems = Array.from(listContainer.querySelectorAll('.events-view-item'));
+            const newEventOrder = eventItems.map(item => {
+                const oldEventIndex = parseInt(item.dataset.eventIndex);
+                return editorState.program.series[seriesIndex].events[oldEventIndex];
+            });
+            
+            // Update the events array with new order
+            editorState.program.series[seriesIndex].events = newEventOrder;
+            
+            // Re-render to update indices
+            renderEventsView();
+            renderTimelinePreview();
+        }
+    });
+    
+    // Keyboard navigation
+    container.addEventListener('keydown', (e) => {
+        const focusedItem = document.activeElement.closest('.events-view-item');
+        if (!focusedItem) return;
+        
+        const seriesIndex = parseInt(focusedItem.dataset.seriesIndex);
+        const eventIndex = parseInt(focusedItem.dataset.eventIndex);
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextItem = focusedItem.nextElementSibling;
+            if (nextItem && nextItem.classList.contains('events-view-item')) {
+                nextItem.focus();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevItem = focusedItem.previousElementSibling;
+            if (prevItem && prevItem.classList.contains('events-view-item')) {
+                prevItem.focus();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            openEventEditModal(seriesIndex, eventIndex);
+        } else if (e.key === 'Delete') {
+            e.preventDefault();
+            if (confirm('Delete this event?')) {
+                editorState.program.series[seriesIndex].events.splice(eventIndex, 1);
+                renderEventsView();
+                renderTimelinePreview();
+            }
+        }
+    });
+    
+    // Make event items focusable for keyboard navigation
+    container.querySelectorAll('.events-view-item').forEach(item => {
+        item.setAttribute('tabindex', '0');
+    });
+}
+
+/**
+ * Open modal to edit event details
+ */
+function openEventEditModal(seriesIndex, eventIndex) {
+    const event = editorState.program.series[seriesIndex].events[eventIndex];
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Event ${eventIndex + 1}</h2>
+                <button class="close-btn" id="close-event-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Duration (ms):</label>
+                    <input type="number" id="event-modal-duration" value="${event.duration}" min="0" step="100" />
+                </div>
+                <div class="form-group">
+                    <label>Command:</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="event-modal-command" value="show" ${event.command === 'show' ? 'checked' : ''} />
+                            Show
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="event-modal-command" value="hide" ${event.command === 'hide' ? 'checked' : ''} />
+                            Hide
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="event-modal-command" value="" ${!event.command ? 'checked' : ''} />
+                            No Change
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Audio IDs:</label>
+                    <div class="audio-search-container">
+                        <input type="text" id="event-modal-audio-search" class="audio-search-input" placeholder="Search audios by ID or title..." />
+                        <div class="audio-suggestions" id="event-modal-audio-suggestions"></div>
+                    </div>
+                    <div class="selected-audios" id="event-modal-selected-audios" style="margin-top: 0.5rem;">
+                        ${renderSelectedAudiosForModal(event.audio_ids || [])}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary" id="cancel-event-modal">Cancel</button>
+                <button class="primary" id="save-event-modal">Save</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Attach event listeners
+    const closeBtn = modal.querySelector('#close-event-modal');
+    const cancelBtn = modal.querySelector('#cancel-event-modal');
+    const saveBtn = modal.querySelector('#save-event-modal');
+    const audioSearch = modal.querySelector('#event-modal-audio-search');
+    
+    const closeModal = () => {
+        document.body.removeChild(modal);
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    
+    saveBtn.addEventListener('click', () => {
+        const duration = parseInt(modal.querySelector('#event-modal-duration').value);
+        const command = modal.querySelector('input[name="event-modal-command"]:checked').value || null;
+        
+        editorState.program.series[seriesIndex].events[eventIndex].duration = duration;
+        editorState.program.series[seriesIndex].events[eventIndex].command = command;
+        
+        closeModal();
+        renderEventsView();
+        renderTimelinePreview();
+    });
+    
+    // Audio search functionality
+    audioSearch.addEventListener('input', () => {
+        handleAudioSearchInModal(audioSearch, event.audio_ids || []);
+    });
+    
+    // Handle audio selection
+    modal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('audio-suggestion-item-modal')) {
+            const audioId = parseInt(e.target.dataset.audioId);
+            if (!event.audio_ids) event.audio_ids = [];
+            if (!event.audio_ids.includes(audioId)) {
+                event.audio_ids.push(audioId);
+                modal.querySelector('#event-modal-selected-audios').innerHTML = renderSelectedAudiosForModal(event.audio_ids);
+                audioSearch.value = '';
+                modal.querySelector('#event-modal-audio-suggestions').innerHTML = '';
+            }
+        }
+        
+        if (e.target.classList.contains('remove-audio-btn-modal')) {
+            const audioIndex = parseInt(e.target.dataset.audioIndex);
+            event.audio_ids.splice(audioIndex, 1);
+            modal.querySelector('#event-modal-selected-audios').innerHTML = renderSelectedAudiosForModal(event.audio_ids);
+        }
+    });
+}
+
+/**
+ * Render selected audios for modal
+ */
+function renderSelectedAudiosForModal(audioIds) {
+    if (audioIds.length === 0) {
+        return '<p class="empty-message small">No audios selected</p>';
+    }
+    
+    return audioIds.map((audioId, audioIndex) => {
+        const audio = editorState.audios.find(a => a.id === audioId);
+        const title = audio ? audio.title : 'Unknown';
+        return `
+            <div class="selected-audio-item">
+                <span class="audio-label">${audioId} - ${title}</span>
+                <button class="remove-audio-btn-modal icon-only" data-audio-index="${audioIndex}" title="Remove Audio">
+                    <img src="/icons/delete_24_regular.svg" alt="Remove" width="18" height="18" />
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Handle audio search in modal
+ */
+function handleAudioSearchInModal(input, selectedIds) {
+    const searchTerm = input.value.toLowerCase();
+    const suggestionsContainer = document.getElementById('event-modal-audio-suggestions');
+    
+    if (!searchTerm) {
+        suggestionsContainer.innerHTML = '';
+        suggestionsContainer.classList.remove('active');
+        return;
+    }
+    
+    // Fuzzy search in audios
+    const matches = editorState.audios.filter(audio => {
+        if (selectedIds.includes(audio.id)) return false;
+        
+        const idStr = audio.id.toString();
+        const titleLower = audio.title.toLowerCase();
+        
+        return idStr.includes(searchTerm) || titleLower.includes(searchTerm);
+    }).slice(0, 10);
+    
+    if (matches.length === 0) {
+        suggestionsContainer.innerHTML = '<div class="no-suggestions">No matches found</div>';
+    } else {
+        suggestionsContainer.innerHTML = matches.map(audio => `
+            <div class="audio-suggestion-item-modal" data-audio-id="${audio.id}">
+                ${audio.id} - ${audio.title}
+            </div>
+        `).join('');
+    }
+    
+    suggestionsContainer.classList.add('active');
 }
 
 /**

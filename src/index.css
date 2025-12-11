@@ -931,6 +931,12 @@ footer {
   border: 2px solid #ddd;
   border-radius: 6px;
   background: white;
+  cursor: move;
+}
+
+.series-item.dragging {
+  opacity: 0.5;
+  border: 2px dashed #007bff;
 }
 
 .series-header {
@@ -938,11 +944,24 @@ footer {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  gap: 0.5rem;
 }
 
 .series-header h4 {
   margin: 0;
   font-size: 1.1rem;
+  flex: 1;
+}
+
+.series-header .drag-handle {
+  cursor: grab;
+  color: #666;
+  font-weight: bold;
+  user-select: none;
+}
+
+.series-header .drag-handle:active {
+  cursor: grabbing;
 }
 
 .events-section {

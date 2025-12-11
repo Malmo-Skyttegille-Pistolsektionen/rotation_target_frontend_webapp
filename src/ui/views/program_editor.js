@@ -229,8 +229,9 @@ function renderAllSeries() {
     }
     
     container.innerHTML = program.series.map((series, seriesIndex) => `
-        <div class="series-item" data-series-index="${seriesIndex}">
+        <div class="series-item" data-series-index="${seriesIndex}" draggable="true">
             <div class="series-header">
+                <span class="drag-handle">≡</span>
                 <h4>Series ${seriesIndex + 1}</h4>
                 <button class="delete-btn small icon-only" data-action="delete-series" data-index="${seriesIndex}" title="Delete Series">
                     <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
@@ -477,6 +478,12 @@ function attachEditorListeners() {
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/html', e.target.innerHTML);
         }
+        // Handle series item dragging
+        if (e.target.classList.contains('series-item')) {
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.innerHTML);
+        }
     });
     
     seriesContainer.addEventListener('dragend', (e) => {
@@ -485,6 +492,10 @@ function attachEditorListeners() {
         }
         // Handle event item drag end
         if (e.target.classList.contains('event-item')) {
+            e.target.classList.remove('dragging');
+        }
+        // Handle series item drag end
+        if (e.target.classList.contains('series-item')) {
             e.target.classList.remove('dragging');
         }
     });
@@ -533,12 +544,32 @@ function attachEditorListeners() {
                 }
             }
         }
+        
+        // Handle series item dragover
+        if (e.target.closest('.series-item')) {
+            e.preventDefault();
+            const draggingElement = document.querySelector('.dragging.series-item');
+            const targetElement = e.target.closest('.series-item');
+            
+            if (draggingElement && targetElement && draggingElement !== targetElement) {
+                const container = targetElement.parentElement;
+                const draggingIndex = Array.from(container.children).indexOf(draggingElement);
+                const targetIndex = Array.from(container.children).indexOf(targetElement);
+                
+                if (draggingIndex < targetIndex) {
+                    targetElement.after(draggingElement);
+                } else {
+                    targetElement.before(draggingElement);
+                }
+            }
+        }
     });
     
     seriesContainer.addEventListener('drop', (e) => {
         e.preventDefault();
         const draggingAudio = document.querySelector('.dragging.selected-audio-item');
         const draggingEvent = document.querySelector('.dragging.event-item');
+        const draggingSeries = document.querySelector('.dragging.series-item');
         
         // Handle audio drop
         if (draggingAudio) {
@@ -570,6 +601,25 @@ function attachEditorListeners() {
             
             // Update the events array with new order
             editorState.program.series[seriesIndex].events = newEventOrder;
+            
+            // Re-render to update indices
+            renderAllSeries();
+            renderTimelinePreview();
+        }
+        
+        // Handle series drop
+        if (draggingSeries) {
+            const container = draggingSeries.parentElement;
+            
+            // Get new order of series
+            const seriesElements = Array.from(container.querySelectorAll('.series-item'));
+            const newSeriesOrder = seriesElements.map(el => {
+                const oldSeriesIndex = parseInt(el.dataset.seriesIndex);
+                return editorState.program.series[oldSeriesIndex];
+            });
+            
+            // Update the series array with new order
+            editorState.program.series = newSeriesOrder;
             
             // Re-render to update indices
             renderAllSeries();

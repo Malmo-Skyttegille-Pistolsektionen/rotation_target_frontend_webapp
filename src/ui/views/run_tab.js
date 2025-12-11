@@ -140,7 +140,7 @@ async function onToggleClick() {
     await toggleTargets();
 }
 
-async function onTimelineModeChange() {
+function onTimelineModeChange() {
     if (window.currentProgram) {
         renderTimelineWithMode(window.currentProgram);
         // Re-apply current highlighting if exists

@@ -313,14 +313,14 @@ export function setCurrentChrono(seriesIdx, elapsedMs) {
   const timelineContainer = timelineContainers[seriesIdx];
   if (!timelineContainer) return;
 
-  const centerline = timelineContainer.querySelector('.logic-timeline-centerline');
-  if (!centerline) return;
+  const axis = timelineContainer.querySelector('.logic-timeline-axis');
+  if (!axis) return;
 
-  let cursor = centerline.querySelector('.logic-timeline-cursor');
+  let cursor = axis.querySelector('.logic-timeline-cursor');
   if (!cursor) {
     cursor = document.createElement('div');
     cursor.className = 'logic-timeline-cursor';
-    centerline.appendChild(cursor);
+    axis.appendChild(cursor);
   }
 
   // Calculate position based on elapsed time (40px per second)
@@ -335,8 +335,8 @@ export function handleSeriesCompleted(seriesIdx) {
   const timelineContainers = document.querySelectorAll('.logic-timeline-container');
   const timelineContainer = timelineContainers[seriesIdx];
   if (!timelineContainer) return;
-  const centerline = timelineContainer.querySelector('.logic-timeline-centerline');
-  if (!centerline) return;
-  const cursor = centerline.querySelector('.logic-timeline-cursor');
+  const axis = timelineContainer.querySelector('.logic-timeline-axis');
+  if (!axis) return;
+  const cursor = axis.querySelector('.logic-timeline-cursor');
   if (cursor) cursor.remove();
 }

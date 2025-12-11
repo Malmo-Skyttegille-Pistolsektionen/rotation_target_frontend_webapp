@@ -14,7 +14,6 @@ let editorState = {
     audios: [], // Cache of available audios
     timelineMode: null, // null = auto, TimelineType.Default, or TimelineType.Field
     collapsedSeries: new Set(), // Track which series are collapsed
-    collapsedEvents: new Set(), // Track which events are collapsed (seriesIndex-eventIndex)
 };
 
 /**
@@ -96,8 +95,7 @@ export function closeProgramEditor() {
         originalProgramId: null,
         audios: [],
         timelineMode: null,
-        collapsedSeries: new Set(),
-        collapsedEvents: new Set()
+        collapsedSeries: new Set()
     };
 }
 
@@ -486,6 +484,19 @@ function attachEditorListeners() {
             const index = parseInt(target.dataset.index);
             if (confirm('Delete this series?')) {
                 editorState.program.series.splice(index, 1);
+                // Update collapsed series indices after deletion
+                const newCollapsedSeries = new Set();
+                editorState.collapsedSeries.forEach(collapsedIndex => {
+                    if (collapsedIndex < index) {
+                        // Series before deleted one keep their index
+                        newCollapsedSeries.add(collapsedIndex);
+                    } else if (collapsedIndex > index) {
+                        // Series after deleted one shift down by 1
+                        newCollapsedSeries.add(collapsedIndex - 1);
+                    }
+                    // Skip the deleted series index
+                });
+                editorState.collapsedSeries = newCollapsedSeries;
                 renderAllSeries();
                 renderTimelinePreview();
             }

@@ -309,32 +309,25 @@ export function clearCurrent() {
 }
 
 export function setCurrentChrono(seriesIdx, elapsedMs) {
-  // const timelineContainers = document.querySelectorAll('.logic-timeline-container');
-  // const timelineContainer = timelineContainers[seriesIdx];
-  // if (!timelineContainer) return;
+  const timelineContainers = document.querySelectorAll('.logic-timeline-container');
+  const timelineContainer = timelineContainers[seriesIdx];
+  if (!timelineContainer) return;
 
-  // const axis = timelineContainer.querySelector('.logic-timeline-axis');
-  // if (!axis) return;
+  const centerline = timelineContainer.querySelector('.logic-timeline-centerline');
+  if (!centerline) return;
 
-  // let cursor = axis.querySelector('.logic-timeline-cursor');
-  // if (!cursor) {
-  //   cursor = document.createElement('div');
-  //   cursor.className = 'logic-timeline-cursor';
-  //   axis.appendChild(cursor);
-  // }
+  let cursor = centerline.querySelector('.logic-timeline-cursor');
+  if (!cursor) {
+    cursor = document.createElement('div');
+    cursor.className = 'logic-timeline-cursor';
+    centerline.appendChild(cursor);
+  }
 
-  // // Find the tick for the current second
-  // const second = Math.floor(elapsedMs / 1000);
-  // const tick = axis.querySelector(`#logic-tick-${seriesIdx}-${second}`);
-  // if (tick) {
-  //   // Center the box over the tick number
-  //   const tickLeft = tick.offsetLeft;
-  //   const tickWidth = tick.offsetWidth || 40; // fallback to 40px if not set
-  //   cursor.style.left = `${tickLeft - tickWidth / 2 + 20}px`; // 20px is half the cursor width
-  //   cursor.style.display = "block";
-  // } else {
-  //   cursor.style.display = "none";
-  // }
+  // Calculate position based on elapsed time (40px per second)
+  const seconds = elapsedMs / 1000;
+  const leftPosition = seconds * 40;
+  cursor.style.left = `${leftPosition}px`;
+  cursor.style.display = "block";
 }
 
 // Remove chrono box on series_completed

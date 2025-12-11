@@ -947,7 +947,7 @@ function attachEventsViewListeners() {
                 }
             } else if (action === 'duplicate-series') {
                 const clonedSeries = JSON.parse(JSON.stringify(editorState.program.series[seriesIndex]));
-                clonedSeries.name = clonedSeries.name + ' (Copy)';
+                clonedSeries.name = (clonedSeries.name || 'Series') + ' (Copy)';
                 editorState.program.series.splice(seriesIndex + 1, 0, clonedSeries);
                 renderEventsView();
                 renderTimelinePreview();
@@ -994,7 +994,9 @@ function attachEventsViewListeners() {
                     return { seriesIdx, eventIdx };
                 });
                 
-                // Sort by series then event index in reverse to delete from end first
+                // Sort by series then event index in reverse to delete from end first.
+                // This is crucial because deleting from the beginning would shift indices
+                // of subsequent elements, causing us to delete wrong items.
                 toDelete.sort((a, b) => {
                     if (a.seriesIdx !== b.seriesIdx) return b.seriesIdx - a.seriesIdx;
                     return b.eventIdx - a.eventIdx;
@@ -1199,7 +1201,8 @@ function openEventEditModal(seriesIndex, eventIndex) {
     
     saveBtn.addEventListener('click', () => {
         const duration = parseInt(modal.querySelector('#event-modal-duration').value);
-        const command = modal.querySelector('input[name="event-modal-command"]:checked').value || null;
+        const commandInput = modal.querySelector('input[name="event-modal-command"]:checked');
+        const command = commandInput ? (commandInput.value || null) : null;
         
         editorState.program.series[seriesIndex].events[eventIndex].duration = duration;
         editorState.program.series[seriesIndex].events[eventIndex].command = command;

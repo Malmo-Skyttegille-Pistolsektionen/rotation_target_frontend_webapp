@@ -964,6 +964,63 @@ footer {
   cursor: grabbing;
 }
 
+/* Collapse toggle button */
+.collapse-toggle {
+  background: none;
+  border: none;
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #666;
+  min-width: auto;
+  min-height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapse-toggle:hover {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.collapse-icon {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+}
+
+/* Series controls - header with actions */
+.series-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.series-controls h3 {
+  margin: 0;
+}
+
+.series-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.series-select {
+  min-width: 200px;
+  max-width: 300px;
+}
+
+/* Collapsed state */
+.series-item.collapsed .series-content {
+  display: none;
+}
+
 .events-section {
   margin-top: 1rem;
   padding: 1rem;

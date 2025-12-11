@@ -13,6 +13,8 @@ let editorState = {
     originalProgramId: null,
     audios: [], // Cache of available audios
     timelineMode: null, // null = auto, TimelineType.Default, or TimelineType.Field
+    collapsedSeries: new Set(), // Track which series are collapsed
+    collapsedEvents: new Set(), // Track which events are collapsed (seriesIndex-eventIndex)
 };
 
 /**
@@ -93,7 +95,9 @@ export function closeProgramEditor() {
         isEditing: false,
         originalProgramId: null,
         audios: [],
-        timelineMode: null
+        timelineMode: null,
+        collapsedSeries: new Set(),
+        collapsedEvents: new Set()
     };
 }
 
@@ -140,7 +144,16 @@ function renderEditor() {
             </div>
             
             <div class="editor-section">
-                <h3>Series</h3>
+                <div class="series-controls">
+                    <h3>Series</h3>
+                    <div class="series-actions">
+                        <select id="series-navigation" class="series-select hidden">
+                            <option value="" disabled selected>Go to series...</option>
+                        </select>
+                        <button id="collapse-all-btn" class="secondary small" title="Collapse all series">Collapse All</button>
+                        <button id="expand-all-btn" class="secondary small" title="Expand all series">Expand All</button>
+                    </div>
+                </div>
                 <div id="series-container"></div>
                 <button id="add-series-btn" class="primary">+ Add Series</button>
             </div>
@@ -228,34 +241,72 @@ function renderAllSeries() {
         return;
     }
     
-    container.innerHTML = program.series.map((series, seriesIndex) => `
-        <div class="series-item" data-series-index="${seriesIndex}" draggable="true">
+    container.innerHTML = program.series.map((series, seriesIndex) => {
+        const isCollapsed = editorState.collapsedSeries.has(seriesIndex);
+        return `
+        <div class="series-item ${isCollapsed ? 'collapsed' : ''}" data-series-index="${seriesIndex}" draggable="true">
             <div class="series-header">
                 <span class="drag-handle">≡</span>
-                <h4>Series ${seriesIndex + 1}</h4>
+                <button class="collapse-toggle icon-only" data-action="toggle-series" data-index="${seriesIndex}" title="${isCollapsed ? 'Expand' : 'Collapse'} Series">
+                    <span class="collapse-icon">${isCollapsed ? '▸' : '▾'}</span>
+                </button>
+                <h4>Series ${seriesIndex + 1}${series.name ? ': ' + series.name : ''}</h4>
                 <button class="delete-btn small icon-only" data-action="delete-series" data-index="${seriesIndex}" title="Delete Series">
                     <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
                 </button>
             </div>
-            <div class="form-group">
-                <label>Name:</label>
-                <input type="text" class="series-name" data-index="${seriesIndex}" value="${series.name}" placeholder="Series Name" />
-            </div>
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" class="series-optional" data-index="${seriesIndex}" ${series.optional ? 'checked' : ''} />
-                    Optional
-                </label>
-            </div>
-            <div class="events-section">
-                <h5>Events</h5>
-                <div class="events-container" data-series-index="${seriesIndex}">
-                    ${renderEvents(series.events, seriesIndex)}
+            <div class="series-content" style="${isCollapsed ? 'display: none;' : ''}">
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" class="series-name" data-index="${seriesIndex}" value="${series.name}" placeholder="Series Name" />
                 </div>
-                <button class="primary small" data-action="add-event" data-series-index="${seriesIndex}">+ Add Event</button>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" class="series-optional" data-index="${seriesIndex}" ${series.optional ? 'checked' : ''} />
+                        Optional
+                    </label>
+                </div>
+                <div class="events-section">
+                    <h5>Events</h5>
+                    <div class="events-container" data-series-index="${seriesIndex}">
+                        ${renderEvents(series.events, seriesIndex)}
+                    </div>
+                    <button class="primary small" data-action="add-event" data-series-index="${seriesIndex}">+ Add Event</button>
+                </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
+    
+    // Update series navigation dropdown
+    updateSeriesNavigation();
+}
+
+/**
+ * Update the series navigation dropdown
+ */
+function updateSeriesNavigation() {
+    const seriesNav = document.getElementById('series-navigation');
+    if (!seriesNav) return;
+    
+    const program = editorState.program;
+    
+    if (program.series.length === 0) {
+        seriesNav.classList.add('hidden');
+        return;
+    }
+    
+    seriesNav.classList.remove('hidden');
+    
+    // Keep the default option and add series options
+    seriesNav.innerHTML = '<option value="" disabled selected>Go to series...</option>';
+    
+    program.series.forEach((series, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `Series ${index + 1}${series.name ? ': ' + series.name : ''}`;
+        seriesNav.appendChild(option);
+    });
 }
 
 /**
@@ -384,6 +435,38 @@ function attachEditorListeners() {
         renderTimelinePreview();
     });
     
+    // Collapse/Expand all buttons
+    document.getElementById('collapse-all-btn').addEventListener('click', () => {
+        editorState.program.series.forEach((_, index) => {
+            editorState.collapsedSeries.add(index);
+        });
+        renderAllSeries();
+    });
+    
+    document.getElementById('expand-all-btn').addEventListener('click', () => {
+        editorState.collapsedSeries.clear();
+        renderAllSeries();
+    });
+    
+    // Series navigation dropdown
+    document.getElementById('series-navigation').addEventListener('change', (e) => {
+        const seriesIndex = parseInt(e.target.value);
+        if (!isNaN(seriesIndex)) {
+            // Scroll to the series
+            const seriesItem = document.querySelector(`.series-item[data-series-index="${seriesIndex}"]`);
+            if (seriesItem) {
+                seriesItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Expand the series if it's collapsed
+                if (editorState.collapsedSeries.has(seriesIndex)) {
+                    editorState.collapsedSeries.delete(seriesIndex);
+                    renderAllSeries();
+                }
+            }
+            // Reset the dropdown
+            e.target.value = '';
+        }
+    });
+    
     // Event delegation for series and events
     const seriesContainer = document.getElementById('series-container');
     
@@ -391,7 +474,15 @@ function attachEditorListeners() {
         const target = e.target;
         const action = target.dataset.action;
         
-        if (action === 'delete-series') {
+        if (action === 'toggle-series') {
+            const index = parseInt(target.dataset.index);
+            if (editorState.collapsedSeries.has(index)) {
+                editorState.collapsedSeries.delete(index);
+            } else {
+                editorState.collapsedSeries.add(index);
+            }
+            renderAllSeries();
+        } else if (action === 'delete-series') {
             const index = parseInt(target.dataset.index);
             if (confirm('Delete this series?')) {
                 editorState.program.series.splice(index, 1);
@@ -420,6 +511,7 @@ function attachEditorListeners() {
         if (target.classList.contains('series-name')) {
             const index = parseInt(target.dataset.index);
             editorState.program.series[index].name = target.value;
+            updateSeriesNavigation(); // Update dropdown when series name changes
             renderTimelinePreview();
         } else if (target.classList.contains('series-optional')) {
             const index = parseInt(target.dataset.index);

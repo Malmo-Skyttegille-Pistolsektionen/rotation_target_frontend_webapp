@@ -803,7 +803,8 @@ footer {
 }
 
 .modal-content.large {
-  max-width: 1000px;
+  max-width: 90%;
+  width: 90%;
 }
 
 .modal-header {
@@ -1048,6 +1049,14 @@ button.icon-only {
 
 button.icon-only img {
   margin: 0;
+}
+
+button.add-btn {
+  font-size: 1.5rem;
+  font-weight: bold;
+  line-height: 1;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 button.secondary {

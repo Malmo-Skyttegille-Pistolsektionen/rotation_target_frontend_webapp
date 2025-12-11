@@ -13,6 +13,7 @@ let editorState = {
     originalProgramId: null,
     audios: [], // Cache of available audios
     timelineMode: null, // null = auto, TimelineType.Default, or TimelineType.Field
+    jsonError: null, // JSON validation error
 };
 
 /**
@@ -108,6 +109,7 @@ function renderEditor() {
         <div class="editor-tabs">
             <button class="editor-tab active" data-tab="editor">Editor</button>
             <button class="editor-tab" data-tab="preview">Preview</button>
+            <button class="editor-tab" data-tab="json">JSON</button>
         </div>
         <div class="editor-tab-content active" id="editor-tab-editor">
             <div class="editor-section">
@@ -155,6 +157,17 @@ function renderEditor() {
                 </select>
             </div>
             <div id="editor-timeline-preview" class="timeline-preview-container"></div>
+        </div>
+        <div class="editor-tab-content" id="editor-tab-json">
+            <div class="json-editor-controls">
+                <button id="format-json-btn" class="primary small">Format JSON</button>
+                <span id="json-validation-status" class="json-validation-status"></span>
+            </div>
+            <div class="json-editor-wrapper">
+                <div class="json-line-numbers" id="json-line-numbers"></div>
+                <textarea id="json-editor-textarea" class="json-editor-textarea" spellcheck="false"></textarea>
+            </div>
+            <div id="json-error-message" class="json-error-message"></div>
         </div>
     `;
     
@@ -211,6 +224,11 @@ function attachTabListeners() {
             // If switching to preview tab, refresh the timeline
             if (targetTab === 'preview') {
                 renderTimelinePreview();
+            }
+            
+            // If switching to JSON tab, update JSON editor
+            if (targetTab === 'json') {
+                updateJsonEditor();
             }
         });
     });
@@ -334,6 +352,91 @@ function renderSelectedAudios(audioIds, seriesIndex, eventIndex) {
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Update the JSON editor with current program state
+ */
+function updateJsonEditor() {
+    const textarea = document.getElementById('json-editor-textarea');
+    if (textarea) {
+        textarea.value = JSON.stringify(editorState.program, null, 2);
+        updateLineNumbers();
+        validateJson();
+    }
+}
+
+/**
+ * Update line numbers for JSON editor
+ */
+function updateLineNumbers() {
+    const textarea = document.getElementById('json-editor-textarea');
+    const lineNumbersDiv = document.getElementById('json-line-numbers');
+    
+    if (!textarea || !lineNumbersDiv) return;
+    
+    const lines = textarea.value.split('\n');
+    const lineNumbersHtml = lines.map((_, index) => `<div>${index + 1}</div>`).join('');
+    lineNumbersDiv.innerHTML = lineNumbersHtml;
+}
+
+/**
+ * Validate JSON and update UI
+ */
+function validateJson() {
+    const textarea = document.getElementById('json-editor-textarea');
+    const statusElement = document.getElementById('json-validation-status');
+    const errorElement = document.getElementById('json-error-message');
+    
+    if (!textarea) return;
+    
+    try {
+        const parsed = JSON.parse(textarea.value);
+        editorState.jsonError = null;
+        statusElement.textContent = '✓ Valid JSON';
+        statusElement.className = 'json-validation-status valid';
+        errorElement.textContent = '';
+        errorElement.style.display = 'none';
+        return parsed;
+    } catch (error) {
+        editorState.jsonError = error.message;
+        statusElement.textContent = '✗ Invalid JSON';
+        statusElement.className = 'json-validation-status invalid';
+        errorElement.textContent = `Error: ${error.message}`;
+        errorElement.style.display = 'block';
+        return null;
+    }
+}
+
+/**
+ * Format JSON in the editor
+ */
+function formatJson() {
+    const textarea = document.getElementById('json-editor-textarea');
+    if (!textarea) return;
+    
+    try {
+        const parsed = JSON.parse(textarea.value);
+        textarea.value = JSON.stringify(parsed, null, 2);
+        updateLineNumbers();
+        validateJson();
+    } catch (error) {
+        // If JSON is invalid, validation will show the error
+        validateJson();
+    }
+}
+
+/**
+ * Sync JSON changes back to program state
+ */
+function syncJsonToProgram() {
+    const parsed = validateJson();
+    if (parsed) {
+        editorState.program = parsed;
+        // Re-render other views to reflect changes
+        renderAllSeries();
+        renderTimelinePreview();
+    }
 }
 
 /**
@@ -576,6 +679,50 @@ function attachEditorListeners() {
             renderTimelinePreview();
         }
     });
+    
+    // JSON editor event listeners
+    const jsonTextarea = document.getElementById('json-editor-textarea');
+    if (jsonTextarea) {
+        // Update line numbers and validate on input
+        jsonTextarea.addEventListener('input', () => {
+            updateLineNumbers();
+            validateJson();
+        });
+        
+        // Sync scroll between textarea and line numbers
+        jsonTextarea.addEventListener('scroll', () => {
+            const lineNumbers = document.getElementById('json-line-numbers');
+            if (lineNumbers) {
+                lineNumbers.scrollTop = jsonTextarea.scrollTop;
+            }
+        });
+        
+        // Sync changes to program on blur (when user leaves the field)
+        jsonTextarea.addEventListener('blur', () => {
+            syncJsonToProgram();
+        });
+        
+        // Handle tab key for indentation
+        jsonTextarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = jsonTextarea.selectionStart;
+                const end = jsonTextarea.selectionEnd;
+                jsonTextarea.value = jsonTextarea.value.substring(0, start) + '  ' + jsonTextarea.value.substring(end);
+                jsonTextarea.selectionStart = jsonTextarea.selectionEnd = start + 2;
+                updateLineNumbers();
+            }
+        });
+    }
+    
+    // Format JSON button
+    const formatBtn = document.getElementById('format-json-btn');
+    if (formatBtn) {
+        formatBtn.addEventListener('click', () => {
+            formatJson();
+            syncJsonToProgram();
+        });
+    }
 }
 
 /**

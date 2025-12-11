@@ -803,8 +803,9 @@ footer {
 }
 
 .modal-content.large {
-  max-width: 90%;
+  max-width: none;
   width: 90%;
+  min-width: 90%;
 }
 
 .modal-header {

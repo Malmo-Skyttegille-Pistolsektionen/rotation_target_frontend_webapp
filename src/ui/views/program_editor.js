@@ -4,13 +4,15 @@
  */
 
 import { fetchAudios } from '../../apis/rest-client.js';
+import { renderTimeline, TimelineType } from './timeline.js';
 
 // State for the editor
 let editorState = {
     program: null,
     isEditing: false,
     originalProgramId: null,
-    audios: [] // Cache of available audios
+    audios: [], // Cache of available audios
+    timelineMode: null // null = auto, TimelineType.Default, or TimelineType.Field
 };
 
 /**
@@ -89,7 +91,9 @@ export function closeProgramEditor() {
     editorState = {
         program: null,
         isEditing: false,
-        originalProgramId: null
+        originalProgramId: null,
+        audios: [],
+        timelineMode: null
     };
 }
 
@@ -135,10 +139,50 @@ function renderEditor() {
             <div id="series-container"></div>
             <button id="add-series-btn" class="primary">+ Add Series</button>
         </div>
+        
+        <div class="editor-section">
+            <div class="preview-header">
+                <h3>Timeline Preview</h3>
+                <select id="editor-timeline-mode-select">
+                    <option value="auto">Timeline: Auto</option>
+                    <option value="default">Timeline: Event-based</option>
+                    <option value="field">Timeline: Time-scaled</option>
+                </select>
+            </div>
+            <div id="editor-timeline-preview" class="timeline-preview-container"></div>
+        </div>
     `;
     
     renderAllSeries();
+    renderTimelinePreview();
     attachEditorListeners();
+}
+
+/**
+ * Render the timeline preview based on current program state
+ */
+function renderTimelinePreview() {
+    const previewContainer = document.getElementById('editor-timeline-preview');
+    const program = editorState.program;
+    
+    // Don't render if no series or events
+    if (!program.series || program.series.length === 0) {
+        previewContainer.innerHTML = '<p class="empty-message">Add series and events to see timeline preview</p>';
+        return;
+    }
+    
+    // Check if any series has events
+    const hasEvents = program.series.some(series => series.events && series.events.length > 0);
+    if (!hasEvents) {
+        previewContainer.innerHTML = '<p class="empty-message">Add events to series to see timeline preview</p>';
+        return;
+    }
+    
+    // Determine timeline type based on mode selector
+    let timelineType = editorState.timelineMode;
+    
+    // Render the timeline
+    renderTimeline(previewContainer, program, timelineType);
 }
 
 /**
@@ -288,10 +332,24 @@ function attachEditorListeners() {
         editorState.program.readonly = e.target.checked;
     });
     
+    // Timeline mode selector
+    document.getElementById('editor-timeline-mode-select').addEventListener('change', (e) => {
+        const mode = e.target.value;
+        if (mode === 'auto') {
+            editorState.timelineMode = null;
+        } else if (mode === 'default') {
+            editorState.timelineMode = TimelineType.Default;
+        } else if (mode === 'field') {
+            editorState.timelineMode = TimelineType.Field;
+        }
+        renderTimelinePreview();
+    });
+    
     // Add series button
     document.getElementById('add-series-btn').addEventListener('click', () => {
         editorState.program.series.push(createEmptySeries());
         renderAllSeries();
+        renderTimelinePreview();
     });
     
     // Event delegation for series and events
@@ -306,17 +364,20 @@ function attachEditorListeners() {
             if (confirm('Delete this series?')) {
                 editorState.program.series.splice(index, 1);
                 renderAllSeries();
+                renderTimelinePreview();
             }
         } else if (action === 'add-event') {
             const seriesIndex = parseInt(target.dataset.seriesIndex);
             editorState.program.series[seriesIndex].events.push(createEmptyEvent());
             renderAllSeries();
+            renderTimelinePreview();
         } else if (action === 'delete-event') {
             const seriesIndex = parseInt(target.dataset.seriesIndex);
             const eventIndex = parseInt(target.dataset.eventIndex);
             if (confirm('Delete this event?')) {
                 editorState.program.series[seriesIndex].events.splice(eventIndex, 1);
                 renderAllSeries();
+                renderTimelinePreview();
             }
         }
     });
@@ -327,21 +388,25 @@ function attachEditorListeners() {
         if (target.classList.contains('series-name')) {
             const index = parseInt(target.dataset.index);
             editorState.program.series[index].name = target.value;
+            renderTimelinePreview();
         } else if (target.classList.contains('series-optional')) {
             const index = parseInt(target.dataset.index);
             editorState.program.series[index].optional = target.checked;
+            renderTimelinePreview();
         } else if (target.classList.contains('event-duration')) {
             const seriesIndex = parseInt(target.dataset.seriesIndex);
             const eventIndex = parseInt(target.dataset.eventIndex);
             const duration = parseInt(target.value);
             if (!isNaN(duration) && duration >= 0) {
                 editorState.program.series[seriesIndex].events[eventIndex].duration = duration;
+                renderTimelinePreview();
             }
         } else if (target.classList.contains('event-command')) {
             const seriesIndex = parseInt(target.dataset.seriesIndex);
             const eventIndex = parseInt(target.dataset.eventIndex);
             const value = target.value;
             editorState.program.series[seriesIndex].events[eventIndex].command = value || null;
+            renderTimelinePreview();
         } else if (target.classList.contains('audio-search-input')) {
             handleAudioSearch(target);
         }
@@ -457,6 +522,7 @@ function attachEditorListeners() {
             });
             
             editorState.program.series[seriesIndex].events[eventIndex].audio_ids = newOrder;
+            renderTimelinePreview();
         }
         
         // Handle event drop
@@ -476,6 +542,7 @@ function attachEditorListeners() {
             
             // Re-render to update indices
             renderAllSeries();
+            renderTimelinePreview();
         }
     });
 }
@@ -534,6 +601,7 @@ function addAudioToEvent(seriesIndex, eventIndex, audioId) {
     if (!event.audio_ids.includes(audioId)) {
         event.audio_ids.push(audioId);
         renderAllSeries();
+        renderTimelinePreview();
     }
 }
 
@@ -544,6 +612,7 @@ function removeAudioFromEvent(seriesIndex, eventIndex, audioIndex) {
     const event = editorState.program.series[seriesIndex].events[eventIndex];
     event.audio_ids.splice(audioIndex, 1);
     renderAllSeries();
+    renderTimelinePreview();
 }
 
 /**

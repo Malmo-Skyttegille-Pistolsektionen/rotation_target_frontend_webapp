@@ -396,6 +396,10 @@ footer {
   cursor: pointer;
 }
 
+.delete-btn img {
+  filter: brightness(0) invert(1);
+}
+
 .timeline-tooltip {
   position: fixed;
   z-index: 1000;
@@ -871,7 +875,7 @@ footer {
 
 .form-group.inline label {
   margin-bottom: 0;
-  min-width: 120px;
+  min-width: 140px;
   text-align: right;
 }
 
@@ -981,7 +985,8 @@ footer {
 .radio-group {
   display: flex;
   gap: 1rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .radio-label {
@@ -1045,8 +1050,22 @@ button.secondary:hover {
   gap: 0.5rem;
 }
 
+.audio-ids-group.inline {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.audio-ids-group.inline .audio-search-container {
+  flex: 1;
+}
+
 .audio-search-container {
   position: relative;
+}
+
+.selected-audios-container {
+  margin-left: 140px;
+  margin-top: 0.5rem;
 }
 
 .audio-search-input {

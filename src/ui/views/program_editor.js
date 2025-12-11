@@ -204,7 +204,7 @@ function renderEvents(events, seriesIndex) {
                     <label>Duration (ms):</label>
                     <input type="number" class="event-duration" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" value="${event.duration}" min="0" step="100" />
                 </div>
-                <div class="form-group">
+                <div class="form-group inline">
                     <label>Command:</label>
                     <div class="radio-group">
                         <label class="radio-label">
@@ -221,12 +221,14 @@ function renderEvents(events, seriesIndex) {
                         </label>
                     </div>
                 </div>
-                <div class="form-group audio-ids-group">
+                <div class="form-group audio-ids-group inline">
                     <label>Audio IDs:</label>
                     <div class="audio-search-container">
                         <input type="text" class="audio-search-input" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" placeholder="Search audios by ID or title..." />
                         <div class="audio-suggestions" data-series-index="${seriesIndex}" data-event-index="${eventIndex}"></div>
                     </div>
+                </div>
+                <div class="selected-audios-container">
                     <div class="selected-audios" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
                         ${renderSelectedAudios(event.audio_ids || [], seriesIndex, eventIndex)}
                     </div>

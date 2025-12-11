@@ -977,12 +977,40 @@ footer {
   gap: 0.5rem;
 }
 
+/* Radio button group */
+.radio-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.radio-label input[type="radio"] {
+  cursor: pointer;
+  width: auto;
+  margin: 0;
+}
+
 /* Button variations */
 button.small {
   padding: 0.4rem 0.8rem;
   font-size: 0.9rem;
   border-radius: 4px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+button.small img {
+  flex-shrink: 0;
 }
 
 button.secondary {
@@ -1102,16 +1130,19 @@ button.secondary:hover {
   background: #dc3545;
   color: white;
   border: none;
-  border-radius: 50%;
-  width: 1.5rem;
-  height: 1.5rem;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  display: flex;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.6rem;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.remove-audio-btn img {
+  flex-shrink: 0;
+  filter: brightness(0) invert(1);
 }
 
 .remove-audio-btn:hover {

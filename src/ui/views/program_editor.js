@@ -157,7 +157,10 @@ function renderAllSeries() {
         <div class="series-item" data-series-index="${seriesIndex}">
             <div class="series-header">
                 <h4>Series ${seriesIndex + 1}</h4>
-                <button class="delete-btn small" data-action="delete-series" data-index="${seriesIndex}">Delete</button>
+                <button class="delete-btn small" data-action="delete-series" data-index="${seriesIndex}">
+                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
+                    Delete
+                </button>
             </div>
             <div class="form-group">
                 <label>Name:</label>
@@ -193,20 +196,32 @@ function renderEvents(events, seriesIndex) {
             <div class="event-header">
                 <span class="drag-handle">≡</span>
                 <span>Event ${eventIndex + 1}</span>
-                <button class="delete-btn small" data-action="delete-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">×</button>
+                <button class="delete-btn small" data-action="delete-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
+                    Delete
+                </button>
             </div>
             <div class="event-fields">
                 <div class="form-group inline">
                     <label>Duration (ms):</label>
                     <input type="number" class="event-duration" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" value="${event.duration}" min="0" step="100" />
                 </div>
-                <div class="form-group inline">
+                <div class="form-group">
                     <label>Command:</label>
-                    <select class="event-command" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                        <option value="" ${!event.command ? 'selected' : ''}>None</option>
-                        <option value="show" ${event.command === 'show' ? 'selected' : ''}>Show</option>
-                        <option value="hide" ${event.command === 'hide' ? 'selected' : ''}>Hide</option>
-                    </select>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="command-${seriesIndex}-${eventIndex}" value="show" class="event-command" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" ${event.command === 'show' ? 'checked' : ''} />
+                            Show
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="command-${seriesIndex}-${eventIndex}" value="hide" class="event-command" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" ${event.command === 'hide' ? 'checked' : ''} />
+                            Hide
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="command-${seriesIndex}-${eventIndex}" value="" class="event-command" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" ${!event.command ? 'checked' : ''} />
+                            No Change
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group audio-ids-group">
                     <label>Audio IDs:</label>
@@ -238,7 +253,10 @@ function renderSelectedAudios(audioIds, seriesIndex, eventIndex) {
             <div class="selected-audio-item" data-audio-index="${audioIndex}" draggable="true">
                 <span class="drag-handle">≡</span>
                 <span class="audio-label">${audioId} - ${title}</span>
-                <button class="remove-audio-btn" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-audio-index="${audioIndex}">×</button>
+                <button class="remove-audio-btn" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-audio-index="${audioIndex}">
+                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="14" height="14" />
+                    Delete
+                </button>
             </div>
         `;
     }).join('');

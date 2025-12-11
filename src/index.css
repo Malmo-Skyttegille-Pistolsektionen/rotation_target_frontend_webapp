@@ -737,6 +737,7 @@ footer {
   pointer-events: none;
   transition: left 0.2s;
   display: block;
+  transform: translateX(-50%);
 }
 
 .logic-timeline-cursor::before {

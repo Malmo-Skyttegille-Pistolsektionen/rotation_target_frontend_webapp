@@ -1013,6 +1013,17 @@ button.small img {
   flex-shrink: 0;
 }
 
+button.icon-only {
+  padding: 0.4rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  justify-content: center;
+}
+
+button.icon-only img {
+  margin: 0;
+}
+
 button.secondary {
   background: #6c757d;
   color: white;
@@ -1132,12 +1143,12 @@ button.secondary:hover {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85rem;
-  padding: 0.3rem 0.6rem;
+  padding: 0.4rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  white-space: nowrap;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
 }
 
 .remove-audio-btn img {

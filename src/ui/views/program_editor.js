@@ -157,9 +157,8 @@ function renderAllSeries() {
         <div class="series-item" data-series-index="${seriesIndex}">
             <div class="series-header">
                 <h4>Series ${seriesIndex + 1}</h4>
-                <button class="delete-btn small" data-action="delete-series" data-index="${seriesIndex}">
-                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
-                    Delete
+                <button class="delete-btn small icon-only" data-action="delete-series" data-index="${seriesIndex}" title="Delete Series">
+                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
                 </button>
             </div>
             <div class="form-group">
@@ -196,9 +195,8 @@ function renderEvents(events, seriesIndex) {
             <div class="event-header">
                 <span class="drag-handle">≡</span>
                 <span>Event ${eventIndex + 1}</span>
-                <button class="delete-btn small" data-action="delete-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
-                    Delete
+                <button class="delete-btn small icon-only" data-action="delete-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
+                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
                 </button>
             </div>
             <div class="event-fields">
@@ -253,9 +251,8 @@ function renderSelectedAudios(audioIds, seriesIndex, eventIndex) {
             <div class="selected-audio-item" data-audio-index="${audioIndex}" draggable="true">
                 <span class="drag-handle">≡</span>
                 <span class="audio-label">${audioId} - ${title}</span>
-                <button class="remove-audio-btn" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-audio-index="${audioIndex}">
-                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="14" height="14" />
-                    Delete
+                <button class="remove-audio-btn icon-only" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-audio-index="${audioIndex}" title="Delete Audio">
+                    <img src="public/icons/delete_24_regular.svg" alt="Delete" width="18" height="18" />
                 </button>
             </div>
         `;

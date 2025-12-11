@@ -213,6 +213,10 @@ function attachTabListeners() {
         tab.addEventListener('click', (e) => {
             const targetTab = e.target.dataset.tab;
             
+            // Check if switching away from JSON tab before removing active class
+            const currentActiveTab = document.querySelector('.editor-tab.active');
+            const switchingFromJson = currentActiveTab && currentActiveTab.dataset.tab === 'json' && targetTab !== 'json';
+            
             // Remove active class from all tabs and contents
             document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.editor-tab-content').forEach(c => c.classList.remove('active'));
@@ -220,6 +224,11 @@ function attachTabListeners() {
             // Add active class to clicked tab and corresponding content
             e.target.classList.add('active');
             document.getElementById(`editor-tab-${targetTab}`).classList.add('active');
+            
+            // If switching away from JSON tab, sync changes
+            if (switchingFromJson) {
+                syncJsonToProgram();
+            }
             
             // If switching to preview tab, refresh the timeline
             if (targetTab === 'preview') {
@@ -432,6 +441,17 @@ function formatJson() {
 function syncJsonToProgram() {
     const parsed = validateJson();
     if (parsed) {
+        // Validate that the parsed object has the required program structure
+        if (!('title' in parsed) || !('series' in parsed) || !Array.isArray(parsed.series)) {
+            const errorElement = document.getElementById('json-error-message');
+            const statusElement = document.getElementById('json-validation-status');
+            statusElement.textContent = '✗ Invalid Program Structure';
+            statusElement.className = 'json-validation-status invalid';
+            errorElement.textContent = 'Error: Program must have "title" and "series" (array) properties';
+            errorElement.style.display = 'block';
+            return;
+        }
+        
         editorState.program = parsed;
         // Re-render other views to reflect changes
         renderAllSeries();
@@ -708,9 +728,27 @@ function attachEditorListeners() {
                 e.preventDefault();
                 const start = jsonTextarea.selectionStart;
                 const end = jsonTextarea.selectionEnd;
-                jsonTextarea.value = jsonTextarea.value.substring(0, start) + '  ' + jsonTextarea.value.substring(end);
-                jsonTextarea.selectionStart = jsonTextarea.selectionEnd = start + 2;
+                
+                if (e.shiftKey) {
+                    // Shift+Tab: Remove indentation
+                    const textBefore = jsonTextarea.value.substring(0, start);
+                    const lastLineStart = textBefore.lastIndexOf('\n') + 1;
+                    const lineStart = jsonTextarea.value.substring(lastLineStart, start);
+                    
+                    if (lineStart.startsWith('  ')) {
+                        jsonTextarea.value = jsonTextarea.value.substring(0, lastLineStart) + 
+                                           lineStart.substring(2) + 
+                                           jsonTextarea.value.substring(start);
+                        jsonTextarea.selectionStart = jsonTextarea.selectionEnd = start - 2;
+                    }
+                } else {
+                    // Tab: Add indentation
+                    jsonTextarea.value = jsonTextarea.value.substring(0, start) + '  ' + jsonTextarea.value.substring(end);
+                    jsonTextarea.selectionStart = jsonTextarea.selectionEnd = start + 2;
+                }
+                
                 updateLineNumbers();
+                validateJson();
             }
         });
     }
@@ -719,8 +757,7 @@ function attachEditorListeners() {
     const formatBtn = document.getElementById('format-json-btn');
     if (formatBtn) {
         formatBtn.addEventListener('click', () => {
-            formatJson();
-            syncJsonToProgram();
+            formatJson(); // formatJson() internally calls validateJson()
         });
     }
 }
@@ -797,6 +834,12 @@ function removeAudioFromEvent(seriesIndex, eventIndex, audioIndex) {
  * Save the program
  */
 export function saveProgramFromEditor() {
+    // If user is on JSON tab, sync changes before saving
+    const activeTab = document.querySelector('.editor-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'json') {
+        syncJsonToProgram();
+    }
+    
     const program = editorState.program;
     
     // Validation

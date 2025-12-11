@@ -189,8 +189,9 @@ function renderEvents(events, seriesIndex) {
     }
     
     return events.map((event, eventIndex) => `
-        <div class="event-item" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+        <div class="event-item" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" draggable="true">
             <div class="event-header">
+                <span class="drag-handle">≡</span>
                 <span>Event ${eventIndex + 1}</span>
                 <button class="delete-btn small" data-action="delete-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">×</button>
             </div>
@@ -357,18 +358,29 @@ function attachEditorListeners() {
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/html', e.target.innerHTML);
         }
+        // Handle event item dragging
+        if (e.target.classList.contains('event-item')) {
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.innerHTML);
+        }
     });
     
     seriesContainer.addEventListener('dragend', (e) => {
         if (e.target.classList.contains('selected-audio-item')) {
             e.target.classList.remove('dragging');
         }
+        // Handle event item drag end
+        if (e.target.classList.contains('event-item')) {
+            e.target.classList.remove('dragging');
+        }
     });
     
     seriesContainer.addEventListener('dragover', (e) => {
+        // Handle audio item dragover
         if (e.target.closest('.selected-audio-item')) {
             e.preventDefault();
-            const draggingElement = document.querySelector('.dragging');
+            const draggingElement = document.querySelector('.dragging.selected-audio-item');
             const targetElement = e.target.closest('.selected-audio-item');
             
             if (draggingElement && targetElement && draggingElement !== targetElement) {
@@ -383,13 +395,41 @@ function attachEditorListeners() {
                 }
             }
         }
+        
+        // Handle event item dragover
+        if (e.target.closest('.event-item')) {
+            e.preventDefault();
+            const draggingElement = document.querySelector('.dragging.event-item');
+            const targetElement = e.target.closest('.event-item');
+            
+            if (draggingElement && targetElement && draggingElement !== targetElement) {
+                // Make sure they're in the same series
+                const draggingSeriesIndex = draggingElement.dataset.seriesIndex;
+                const targetSeriesIndex = targetElement.dataset.seriesIndex;
+                
+                if (draggingSeriesIndex === targetSeriesIndex) {
+                    const container = targetElement.parentElement;
+                    const draggingIndex = Array.from(container.children).filter(el => el.classList.contains('event-item')).indexOf(draggingElement);
+                    const targetIndex = Array.from(container.children).filter(el => el.classList.contains('event-item')).indexOf(targetElement);
+                    
+                    if (draggingIndex < targetIndex) {
+                        targetElement.after(draggingElement);
+                    } else {
+                        targetElement.before(draggingElement);
+                    }
+                }
+            }
+        }
     });
     
     seriesContainer.addEventListener('drop', (e) => {
         e.preventDefault();
-        const draggingElement = document.querySelector('.dragging');
-        if (draggingElement) {
-            const container = draggingElement.parentElement;
+        const draggingAudio = document.querySelector('.dragging.selected-audio-item');
+        const draggingEvent = document.querySelector('.dragging.event-item');
+        
+        // Handle audio drop
+        if (draggingAudio) {
+            const container = draggingAudio.parentElement;
             const seriesIndex = parseInt(container.dataset.seriesIndex);
             const eventIndex = parseInt(container.dataset.eventIndex);
             
@@ -400,6 +440,25 @@ function attachEditorListeners() {
             });
             
             editorState.program.series[seriesIndex].events[eventIndex].audio_ids = newOrder;
+        }
+        
+        // Handle event drop
+        if (draggingEvent) {
+            const seriesIndex = parseInt(draggingEvent.dataset.seriesIndex);
+            const container = draggingEvent.parentElement;
+            
+            // Get new order of events
+            const eventElements = Array.from(container.querySelectorAll('.event-item'));
+            const newEventOrder = eventElements.map(el => {
+                const oldEventIndex = parseInt(el.dataset.eventIndex);
+                return editorState.program.series[seriesIndex].events[oldEventIndex];
+            });
+            
+            // Update the events array with new order
+            editorState.program.series[seriesIndex].events = newEventOrder;
+            
+            // Re-render to update indices
+            renderAllSeries();
         }
     });
 }

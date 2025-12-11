@@ -943,6 +943,12 @@ footer {
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
+  cursor: move;
+}
+
+.event-item.dragging {
+  opacity: 0.5;
+  border: 2px dashed #007bff;
 }
 
 .event-header {
@@ -951,6 +957,18 @@ footer {
   align-items: center;
   margin-bottom: 0.5rem;
   font-weight: 500;
+  gap: 0.5rem;
+}
+
+.event-header .drag-handle {
+  cursor: grab;
+  color: #666;
+  font-weight: bold;
+  user-select: none;
+}
+
+.event-header .drag-handle:active {
+  cursor: grabbing;
 }
 
 .event-fields {

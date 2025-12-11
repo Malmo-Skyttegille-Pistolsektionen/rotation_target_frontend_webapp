@@ -335,8 +335,8 @@ export function handleSeriesCompleted(seriesIdx) {
   const timelineContainers = document.querySelectorAll('.logic-timeline-container');
   const timelineContainer = timelineContainers[seriesIdx];
   if (!timelineContainer) return;
-  const axis = timelineContainer.querySelector('.logic-timeline-axis');
-  if (!axis) return;
-  const cursor = axis.querySelector('.logic-timeline-cursor');
+  const centerline = timelineContainer.querySelector('.logic-timeline-centerline');
+  if (!centerline) return;
+  const cursor = centerline.querySelector('.logic-timeline-cursor');
   if (cursor) cursor.remove();
 }

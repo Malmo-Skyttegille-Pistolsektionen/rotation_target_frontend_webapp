@@ -731,7 +731,7 @@ footer {
   position: absolute;
   top: -60px;
   width: 3px;
-  height: 60px;
+  height: 88px;
   background: red;
   z-index: 10;
   pointer-events: none;

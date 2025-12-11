@@ -12,7 +12,7 @@ let editorState = {
     isEditing: false,
     originalProgramId: null,
     audios: [], // Cache of available audios
-    timelineMode: null // null = auto, TimelineType.Default, or TimelineType.Field
+    timelineMode: null, // null = auto, TimelineType.Default, or TimelineType.Field
 };
 
 /**
@@ -139,7 +139,6 @@ function renderEditor() {
             <div id="series-container"></div>
             <button id="add-series-btn" class="primary">+ Add Series</button>
         </div>
-        
         <div class="editor-section">
             <div class="preview-header">
                 <h3>Timeline Preview</h3>

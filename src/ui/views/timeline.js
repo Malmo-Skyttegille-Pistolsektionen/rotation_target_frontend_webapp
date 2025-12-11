@@ -310,6 +310,18 @@ export function clearCurrent() {
 
 export function setCurrentChrono(seriesIdx, elapsedMs) {
   const timelineContainers = document.querySelectorAll('.logic-timeline-container');
+  
+  // Remove all existing cursors from other series
+  timelineContainers.forEach((container, idx) => {
+    if (idx !== seriesIdx) {
+      const axis = container.querySelector('.logic-timeline-axis');
+      if (axis) {
+        const cursor = axis.querySelector('.logic-timeline-cursor');
+        if (cursor) cursor.remove();
+      }
+    }
+  });
+  
   const timelineContainer = timelineContainers[seriesIdx];
   if (!timelineContainer) return;
 

@@ -120,9 +120,8 @@ function renderEventsView() {
         const totalDuration = series.events.reduce((sum, event) => sum + event.duration, 0);
         
         return `
-            <div class="events-view-series" data-series-index="${seriesIndex}" draggable="true" id="series-${seriesIndex}">
+            <div class="events-view-series" data-series-index="${seriesIndex}" draggable="true" id="series-${seriesIndex}" title="Drag to reorder series">
                 <div class="events-view-series-header ${isCollapsed ? 'collapsed' : ''}">
-                    <div class="series-drag-handle" title="Drag to reorder series">≡</div>
                     <button class="series-toggle-btn" data-series-index="${seriesIndex}" title="Toggle series">
                         <span class="toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
                     </button>
@@ -165,11 +164,10 @@ function renderEventsView() {
                         }).join(', ');
                         
                         return `
-                            <div class="events-view-item ${isSelected ? 'selected' : ''}" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-event-id="${eventId}" draggable="true">
+                            <div class="events-view-item ${isSelected ? 'selected' : ''}" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-event-id="${eventId}" draggable="true" title="Drag to reorder">
                                 <div class="event-select">
                                     <input type="checkbox" class="event-checkbox" data-event-id="${eventId}" ${isSelected ? 'checked' : ''} />
                                 </div>
-                                <div class="event-drag-handle" title="Drag to reorder">≡</div>
                                 <div class="event-details">
                                     <div class="event-detail-row">
                                         <span class="event-label">Event ${eventIndex + 1}</span>
@@ -213,19 +211,28 @@ function renderEventsView() {
         `;
     }).join('');
     
-    // Add batch actions bar if any events are selected
+    // Update batch delete button visibility and select-all checkbox state
     const selectedCount = editorState.selectedEvents.size;
-    if (selectedCount > 0) {
-        const batchBar = document.createElement('div');
-        batchBar.className = 'batch-actions-bar';
-        batchBar.innerHTML = `
-            <span class="batch-count">${selectedCount} event${selectedCount !== 1 ? 's' : ''} selected</span>
-            <div class="batch-buttons">
-                <button id="batch-delete-btn" class="delete-btn small">Delete Selected</button>
-                <button id="batch-deselect-btn" class="secondary small">Clear Selection</button>
-            </div>
-        `;
-        container.prepend(batchBar);
+    const batchDeleteBtn = document.getElementById('batch-delete-btn');
+    const selectAllCheckbox = document.getElementById('select-all-events-checkbox');
+    
+    if (batchDeleteBtn) {
+        batchDeleteBtn.style.display = selectedCount > 0 ? 'flex' : 'none';
+    }
+    
+    // Update select-all checkbox state (all, none, or indeterminate)
+    if (selectAllCheckbox) {
+        const totalEvents = program.series.reduce((sum, series) => sum + series.events.length, 0);
+        if (selectedCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedCount === totalEvents) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
     }
     
     // Populate the "Go to series" dropdown
@@ -240,10 +247,7 @@ function renderEventsView() {
     // Update the summary
     const summaryEl = document.getElementById('events-view-summary');
     if (summaryEl) {
-        const totalEvents = program.series.reduce((sum, series) => sum + series.events.length, 0);
-        const totalDuration = program.series.reduce((sum, series) => 
-            sum + series.events.reduce((s, e) => s + e.duration, 0), 0);
-        summaryEl.textContent = `${program.series.length} series • ${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s total`;
+        summaryEl.textContent = `${program.series.length} series`;
     }
     
     attachEventsViewListeners();
@@ -301,7 +305,13 @@ function renderEditor() {
         </div>
         <div class="editor-tab-content" id="editor-tab-events">
             <div class="events-view-header">
-                <h3 id="events-view-summary"></h3>
+                <div class="events-view-header-left">
+                    <input type="checkbox" id="select-all-events-checkbox" title="Select all / none" />
+                    <h3 id="events-view-summary"></h3>
+                    <button id="batch-delete-btn" class="icon-btn delete-btn" style="display: none;" title="Delete selected">
+                        <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
+                    </button>
+                </div>
                 <div class="events-view-actions">
                     <select id="goto-series-select" class="goto-series-select">
                         <option value="">Go to series...</option>
@@ -1081,10 +1091,28 @@ function attachEventsViewListeners() {
         }
     });
     
-    // Batch action buttons
-    const batchDeleteBtn = document.getElementById('batch-delete-btn');
-    const batchDeselectBtn = document.getElementById('batch-deselect-btn');
+    // Select-all checkbox
+    const selectAllCheckbox = document.getElementById('select-all-events-checkbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked || e.target.indeterminate) {
+                // Select all events
+                editorState.selectedEvents.clear();
+                editorState.program.series.forEach((series, seriesIdx) => {
+                    series.events.forEach((event, eventIdx) => {
+                        editorState.selectedEvents.add(`${seriesIdx}-${eventIdx}`);
+                    });
+                });
+            } else {
+                // Deselect all
+                editorState.selectedEvents.clear();
+            }
+            renderEventsView();
+        });
+    }
     
+    // Batch delete button
+    const batchDeleteBtn = document.getElementById('batch-delete-btn');
     if (batchDeleteBtn) {
         batchDeleteBtn.addEventListener('click', () => {
             if (confirm(`Delete ${editorState.selectedEvents.size} selected event(s)?`)) {
@@ -1117,31 +1145,30 @@ function attachEventsViewListeners() {
         });
     }
     
-    if (batchDeselectBtn) {
-        batchDeselectBtn.addEventListener('click', () => {
-            editorState.selectedEvents.clear();
-            renderEventsView();
-        });
-    }
-    
     // Drag and drop for event reordering
     container.addEventListener('dragstart', (e) => {
-        const seriesItem = e.target.closest('.events-view-series');
-        const eventItem = e.target.closest('.events-view-item');
-        
-        // Check if dragging a series (by its drag handle)
-        if (seriesItem && e.target.closest('.series-drag-handle')) {
-            seriesItem.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', 'series-' + seriesItem.dataset.seriesIndex);
+        // Don't allow dragging when clicking on interactive elements
+        if (e.target.matches('input, button, select, a, .icon-btn, .menu-item')) {
+            e.preventDefault();
             return;
         }
         
-        // Otherwise, handle event dragging
+        const seriesItem = e.target.closest('.events-view-series');
+        const eventItem = e.target.closest('.events-view-item');
+        
+        // Check if dragging an event (prioritize over series)
         if (eventItem) {
             eventItem.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', eventItem.dataset.eventId);
+            return;
+        }
+        
+        // Otherwise, handle series dragging
+        if (seriesItem) {
+            seriesItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', 'series-' + seriesItem.dataset.seriesIndex);
         }
     });
     
@@ -1311,13 +1338,13 @@ function openEventEditModal(seriesIndex, eventIndex) {
                 <button class="close-btn" id="close-event-modal">×</button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
+                <div class="form-group-inline">
                     <label>Duration (ms):</label>
                     <input type="number" id="event-modal-duration" value="${event.duration}" min="0" step="100" />
                 </div>
-                <div class="form-group">
+                <div class="form-group-inline">
                     <label>Command:</label>
-                    <div class="radio-group">
+                    <div class="radio-group-inline">
                         <label class="radio-label">
                             <input type="radio" name="event-modal-command" value="show" ${event.command === 'show' ? 'checked' : ''} />
                             Show
@@ -1332,14 +1359,16 @@ function openEventEditModal(seriesIndex, eventIndex) {
                         </label>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group-inline">
                     <label>Audio IDs:</label>
-                    <div class="audio-search-container">
-                        <input type="text" id="event-modal-audio-search" class="audio-search-input" placeholder="Search audios by ID or title..." />
-                        <div class="audio-suggestions" id="event-modal-audio-suggestions"></div>
-                    </div>
-                    <div class="selected-audios" id="event-modal-selected-audios" style="margin-top: 0.5rem;">
-                        ${renderSelectedAudiosForModal(event.audio_ids || [])}
+                    <div class="audio-input-container">
+                        <div class="audio-search-container">
+                            <input type="text" id="event-modal-audio-search" class="audio-search-input" placeholder="Search audios by ID or title..." />
+                            <div class="audio-suggestions" id="event-modal-audio-suggestions"></div>
+                        </div>
+                        <div class="selected-audios" id="event-modal-selected-audios">
+                            ${renderSelectedAudiosForModal(event.audio_ids || [])}
+                        </div>
                     </div>
                 </div>
             </div>

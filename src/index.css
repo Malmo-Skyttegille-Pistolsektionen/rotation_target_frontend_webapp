@@ -907,6 +907,51 @@ footer {
   flex: 1;
 }
 
+/* Inline form group for modal */
+.form-group-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group-inline > label {
+  min-width: 120px;
+  font-weight: 500;
+  padding-top: 0.5rem;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.form-group-inline input[type="number"] {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  flex: 1;
+}
+
+.radio-group-inline {
+  display: flex;
+  gap: 1.5rem;
+  flex: 1;
+  align-items: center;
+}
+
+.radio-group-inline .radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.audio-input-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .checkbox-group label {
   display: flex;
   align-items: center;
@@ -1401,6 +1446,18 @@ button.small {
   font-size: 1.2rem;
 }
 
+.events-view-header-left {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.events-view-header-left input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+}
+
 .events-view-actions {
   display: flex;
   gap: 0.5rem;
@@ -1450,18 +1507,7 @@ button.small {
   border-bottom: none;
 }
 
-.series-drag-handle {
-  cursor: grab;
-  color: #999;
-  font-size: 1.2rem;
-  font-weight: bold;
-  user-select: none;
-  padding: 0 0.25rem;
-}
 
-.series-drag-handle:active {
-  cursor: grabbing;
-}
 
 .series-toggle-btn {
   background: none;
@@ -1571,18 +1617,7 @@ button.small {
   cursor: pointer;
 }
 
-.event-drag-handle {
-  cursor: grab;
-  color: #999;
-  font-size: 1.2rem;
-  font-weight: bold;
-  user-select: none;
-  padding: 0 0.25rem;
-}
 
-.event-drag-handle:active {
-  cursor: grabbing;
-}
 
 .event-details {
   flex: 1;
@@ -1769,49 +1804,7 @@ button.small {
 }
 
 /* Batch Actions Bar */
-.batch-actions-bar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  background: #0078d4;
-  color: white;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
-}
-
-.batch-count {
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.batch-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.batch-actions-bar .delete-btn,
-.batch-actions-bar .secondary {
-  background: white;
-  color: #333;
-}
-
-.batch-actions-bar .delete-btn {
-  background: #dc3545;
-  color: white;
-}
-
-.batch-actions-bar .delete-btn:hover {
-  background: #c82333;
-}
-
-.batch-actions-bar .secondary:hover {
-  background: #f0f0f0;
-}
+/* Removed - using header-based batch actions instead */
 
 /* Audio suggestion modal styling */
 .audio-suggestion-item-modal {

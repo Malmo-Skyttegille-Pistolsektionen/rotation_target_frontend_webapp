@@ -17,6 +17,8 @@ let editorState = {
     jsonError: null, // JSON validation error
     collapsedSeries: new Set(), // Track which series are collapsed in events view
     selectedEvents: new Set(), // Track selected events for batch operations (format: "seriesIndex-eventIndex")
+    timelineZoom: 1, // Zoom level for timeline editor (1 = default, 40px per second)
+    timelineSelectedSeries: null, // Currently selected series in timeline view (null = show all)
 };
 
 /**
@@ -256,6 +258,7 @@ function renderEditor() {
         <div class="editor-tabs">
             <button class="editor-tab active" data-tab="editor">Form</button>
             <button class="editor-tab" data-tab="events">Events</button>
+            <button class="editor-tab" data-tab="timeline">Timeline</button>
             <button class="editor-tab" data-tab="preview">Preview</button>
             <button class="editor-tab" data-tab="json">JSON</button>
         </div>
@@ -350,6 +353,22 @@ function renderEditor() {
                 </div>
             </div>
             <div id="events-view-container"></div>
+        </div>
+        <div class="editor-tab-content" id="editor-tab-timeline">
+            <div class="timeline-editor-container">
+                <div class="timeline-editor-header">
+                    <div class="timeline-editor-controls">
+                        <select id="timeline-series-select" class="timeline-series-select">
+                            <option value="">Select series...</option>
+                        </select>
+                        <button id="timeline-zoom-in" class="secondary small" title="Zoom In">+</button>
+                        <button id="timeline-zoom-out" class="secondary small" title="Zoom Out">-</button>
+                        <button id="timeline-zoom-fit" class="secondary small" title="Fit to Window">Fit</button>
+                        <span id="timeline-info" class="timeline-info"></span>
+                    </div>
+                </div>
+                <div id="timeline-editor-content" class="timeline-editor-content"></div>
+            </div>
         </div>
         <div class="editor-tab-content" id="editor-tab-preview">
             <div class="preview-controls">
@@ -447,6 +466,11 @@ function attachTabListeners() {
             // If switching to events tab, render events view
             if (targetTab === 'events') {
                 renderEventsView();
+            }
+            
+            // If switching to timeline tab, render timeline editor
+            if (targetTab === 'timeline') {
+                renderTimelineEditor();
             }
         });
     });
@@ -1780,6 +1804,347 @@ function attachEventsViewListeners() {
     // Make event items focusable for keyboard navigation
     container.querySelectorAll('.events-view-item').forEach(item => {
         item.setAttribute('tabindex', '0');
+    });
+}
+
+/**
+ * Render the timeline-based editor view
+ */
+function renderTimelineEditor() {
+    const container = document.getElementById('timeline-editor-content');
+    const program = editorState.program;
+    
+    // Update series selector
+    const seriesSelect = document.getElementById('timeline-series-select');
+    if (seriesSelect) {
+        seriesSelect.innerHTML = '<option value="">All Series</option>' + 
+            program.series.map((series, index) => 
+                `<option value="${index}" ${editorState.timelineSelectedSeries === index ? 'selected' : ''}>${series.name || `Series ${index + 1}`}</option>`
+            ).join('');
+    }
+    
+    if (!program.series || program.series.length === 0) {
+        container.innerHTML = '<p class="empty-message">No series added yet. Switch to Form tab to add series.</p>';
+        return;
+    }
+    
+    // Determine which series to show
+    const seriesToShow = editorState.timelineSelectedSeries !== null 
+        ? [{ series: program.series[editorState.timelineSelectedSeries], index: editorState.timelineSelectedSeries }]
+        : program.series.map((series, index) => ({ series, index }));
+    
+    // Calculate pixel per second based on zoom
+    const pixelsPerSecond = 40 * editorState.timelineZoom;
+    
+    container.innerHTML = seriesToShow.map(({ series, index: seriesIndex }) => {
+        if (!series.events || series.events.length === 0) {
+            return `
+                <div class="timeline-series-container" data-series-index="${seriesIndex}">
+                    <div class="timeline-series-header">
+                        <h4>${series.name || `Series ${seriesIndex + 1}`}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
+                    </div>
+                    <p class="empty-message">No events in this series.</p>
+                </div>
+            `;
+        }
+        
+        // Calculate cumulative timeline
+        let cumulativeTime = 0;
+        const eventsWithPositions = series.events.map((event, eventIndex) => {
+            const startTime = cumulativeTime;
+            cumulativeTime += event.duration;
+            return { event, eventIndex, startTime, endTime: cumulativeTime };
+        });
+        
+        const totalDuration = cumulativeTime;
+        const totalDurationSeconds = Math.ceil(totalDuration / 1000);
+        const timelineWidth = totalDurationSeconds * pixelsPerSecond;
+        
+        // Generate time markers (every second)
+        const timeMarkers = [];
+        for (let i = 0; i <= totalDurationSeconds; i++) {
+            timeMarkers.push(i);
+        }
+        
+        return `
+            <div class="timeline-series-container" data-series-index="${seriesIndex}">
+                <div class="timeline-series-header">
+                    <h4>${series.name || `Series ${seriesIndex + 1}`}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
+                    <span class="series-meta">Total: ${(totalDuration / 1000).toFixed(1)}s</span>
+                </div>
+                <div class="timeline-track-container">
+                    <div class="timeline-track" style="width: ${timelineWidth}px;">
+                        ${eventsWithPositions.map(({ event, eventIndex, startTime, endTime }) => {
+                            const startSeconds = startTime / 1000;
+                            const durationSeconds = event.duration / 1000;
+                            const leftPosition = startSeconds * pixelsPerSecond;
+                            const width = durationSeconds * pixelsPerSecond;
+                            
+                            const eventId = `${seriesIndex}-${eventIndex}`;
+                            const isSelected = editorState.selectedEvents.has(eventId);
+                            
+                            const audioTitles = (event.audio_ids || []).map(id => {
+                                const audio = editorState.audios.find(a => a.id === id);
+                                return audio ? audio.title : `ID ${id}`;
+                            }).join(', ');
+                            
+                            let commandClass = 'no-command';
+                            if (event.command === 'show') commandClass = 'show-command';
+                            else if (event.command === 'hide') commandClass = 'hide-command';
+                            
+                            return `
+                                <div class="timeline-event ${commandClass} ${isSelected ? 'selected' : ''}" 
+                                     data-series-index="${seriesIndex}" 
+                                     data-event-index="${eventIndex}"
+                                     data-event-id="${eventId}"
+                                     style="left: ${leftPosition}px; width: ${width}px;"
+                                     draggable="true"
+                                     tabindex="0"
+                                     title="${event.command ? event.command.toUpperCase() : 'NO CHANGE'}: ${durationSeconds.toFixed(1)}s${audioTitles ? '\nAudios: ' + audioTitles : ''}">
+                                    <div class="timeline-event-header">
+                                        <input type="checkbox" class="timeline-event-checkbox" data-event-id="${eventId}" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation()" />
+                                        <span class="timeline-event-number">${eventIndex + 1}</span>
+                                    </div>
+                                    <div class="timeline-event-body">
+                                        <div class="timeline-event-duration">${durationSeconds.toFixed(1)}s</div>
+                                        <div class="timeline-event-command">${event.command ? event.command.toUpperCase() : 'NO CHANGE'}</div>
+                                        ${(event.audio_ids && event.audio_ids.length > 0) ? `<div class="timeline-event-audio">♫ ${event.audio_ids.length}</div>` : ''}
+                                    </div>
+                                    <div class="timeline-event-actions">
+                                        <button class="timeline-event-action-btn" data-action="edit" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Edit" onclick="event.stopPropagation()">
+                                            <img src="public/icons/edit_24_regular.svg" alt="Edit" width="16" height="16" />
+                                        </button>
+                                        <button class="timeline-event-action-btn" data-action="copy" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Copy" onclick="event.stopPropagation()">
+                                            <img src="public/icons/copy_24_regular.svg" alt="Copy" width="16" height="16" />
+                                        </button>
+                                        <button class="timeline-event-action-btn delete" data-action="delete" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete" onclick="event.stopPropagation()">
+                                            <img src="public/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="timeline-axis" style="width: ${timelineWidth}px;">
+                        ${timeMarkers.map(second => `
+                            <div class="timeline-tick" style="left: ${second * pixelsPerSecond}px;">
+                                <div class="timeline-tick-mark"></div>
+                                <div class="timeline-tick-label">${second}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Update info display
+    const infoEl = document.getElementById('timeline-info');
+    if (infoEl) {
+        const totalEvents = program.series.reduce((sum, series) => sum + series.events.length, 0);
+        const selectedCount = editorState.selectedEvents.size;
+        infoEl.textContent = selectedCount > 0 
+            ? `${selectedCount} of ${totalEvents} events selected` 
+            : `${totalEvents} events total`;
+    }
+    
+    attachTimelineEditorListeners();
+}
+
+/**
+ * Attach event listeners to timeline editor
+ */
+function attachTimelineEditorListeners() {
+    const container = document.getElementById('timeline-editor-content');
+    if (!container) return;
+    
+    // Series selector
+    const seriesSelect = document.getElementById('timeline-series-select');
+    if (seriesSelect) {
+        seriesSelect.addEventListener('change', (e) => {
+            const value = e.target.value;
+            editorState.timelineSelectedSeries = value === '' ? null : parseInt(value);
+            renderTimelineEditor();
+        });
+    }
+    
+    // Zoom controls
+    const zoomInBtn = document.getElementById('timeline-zoom-in');
+    const zoomOutBtn = document.getElementById('timeline-zoom-out');
+    const zoomFitBtn = document.getElementById('timeline-zoom-fit');
+    
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', () => {
+            editorState.timelineZoom = Math.min(3, editorState.timelineZoom * 1.2);
+            renderTimelineEditor();
+        });
+    }
+    
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', () => {
+            editorState.timelineZoom = Math.max(0.3, editorState.timelineZoom / 1.2);
+            renderTimelineEditor();
+        });
+    }
+    
+    if (zoomFitBtn) {
+        zoomFitBtn.addEventListener('click', () => {
+            editorState.timelineZoom = 1;
+            renderTimelineEditor();
+        });
+    }
+    
+    // Event selection via checkboxes
+    container.addEventListener('change', (e) => {
+        if (e.target.classList.contains('timeline-event-checkbox')) {
+            const eventId = e.target.dataset.eventId;
+            if (e.target.checked) {
+                editorState.selectedEvents.add(eventId);
+            } else {
+                editorState.selectedEvents.delete(eventId);
+            }
+            renderTimelineEditor();
+        }
+    });
+    
+    // Event actions
+    container.addEventListener('click', (e) => {
+        const actionBtn = e.target.closest('[data-action]');
+        if (actionBtn) {
+            const action = actionBtn.dataset.action;
+            const seriesIndex = parseInt(actionBtn.dataset.seriesIndex);
+            const eventIndex = parseInt(actionBtn.dataset.eventIndex);
+            
+            if (action === 'edit') {
+                openEventEditModal(seriesIndex, eventIndex);
+            } else if (action === 'copy') {
+                duplicateEvent(seriesIndex, eventIndex);
+                renderTimelineEditor();
+                renderTimelinePreview();
+            } else if (action === 'delete') {
+                if (confirm('Delete this event?')) {
+                    editorState.program.series[seriesIndex].events.splice(eventIndex, 1);
+                    renderTimelineEditor();
+                    renderTimelinePreview();
+                }
+            }
+        }
+        
+        // Click on event to select/deselect
+        const timelineEvent = e.target.closest('.timeline-event');
+        if (timelineEvent && !e.target.closest('.timeline-event-checkbox') && !e.target.closest('[data-action]')) {
+            const eventId = timelineEvent.dataset.eventId;
+            if (editorState.selectedEvents.has(eventId)) {
+                editorState.selectedEvents.delete(eventId);
+            } else {
+                editorState.selectedEvents.add(eventId);
+            }
+            renderTimelineEditor();
+        }
+    });
+    
+    // Drag and drop for event reordering
+    container.addEventListener('dragstart', (e) => {
+        const timelineEvent = e.target.closest('.timeline-event');
+        if (timelineEvent) {
+            timelineEvent.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', timelineEvent.dataset.eventId);
+        }
+    });
+    
+    container.addEventListener('dragend', (e) => {
+        const timelineEvent = e.target.closest('.timeline-event');
+        if (timelineEvent) {
+            timelineEvent.classList.remove('dragging');
+        }
+    });
+    
+    container.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector('.timeline-event.dragging');
+        const targetItem = e.target.closest('.timeline-event');
+        
+        if (draggingItem && targetItem && draggingItem !== targetItem) {
+            const targetSeriesIndex = parseInt(targetItem.dataset.seriesIndex);
+            const draggingSeriesIndex = parseInt(draggingItem.dataset.seriesIndex);
+            
+            // Only allow reordering within the same series
+            if (targetSeriesIndex === draggingSeriesIndex) {
+                const container = targetItem.parentElement;
+                const allItems = Array.from(container.querySelectorAll('.timeline-event'));
+                const draggingIndex = allItems.indexOf(draggingItem);
+                const targetIndex = allItems.indexOf(targetItem);
+                
+                if (draggingIndex < targetIndex) {
+                    targetItem.after(draggingItem);
+                } else {
+                    targetItem.before(draggingItem);
+                }
+            }
+        }
+    });
+    
+    container.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector('.timeline-event.dragging');
+        
+        if (draggingItem) {
+            const seriesIndex = parseInt(draggingItem.dataset.seriesIndex);
+            const trackContainer = draggingItem.parentElement;
+            
+            // Get new order of events
+            const eventItems = Array.from(trackContainer.querySelectorAll('.timeline-event'));
+            const newEventOrder = eventItems.map(item => {
+                const oldEventIndex = parseInt(item.dataset.eventIndex);
+                return editorState.program.series[seriesIndex].events[oldEventIndex];
+            });
+            
+            // Update the events array with new order
+            editorState.program.series[seriesIndex].events = newEventOrder;
+            
+            // Re-render to update indices and positions
+            renderTimelineEditor();
+            renderTimelinePreview();
+        }
+    });
+    
+    // Keyboard navigation
+    container.addEventListener('keydown', (e) => {
+        const focusedEvent = document.activeElement.closest('.timeline-event');
+        if (!focusedEvent) return;
+        
+        const seriesIndex = parseInt(focusedEvent.dataset.seriesIndex);
+        const eventIndex = parseInt(focusedEvent.dataset.eventIndex);
+        
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            const nextEvent = focusedEvent.nextElementSibling;
+            if (nextEvent && nextEvent.classList.contains('timeline-event')) {
+                nextEvent.focus();
+            }
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const prevEvent = focusedEvent.previousElementSibling;
+            if (prevEvent && prevEvent.classList.contains('timeline-event')) {
+                prevEvent.focus();
+            }
+        } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openEventEditModal(seriesIndex, eventIndex);
+        } else if (e.key === 'Delete') {
+            e.preventDefault();
+            if (confirm('Delete this event?')) {
+                editorState.program.series[seriesIndex].events.splice(eventIndex, 1);
+                renderTimelineEditor();
+                renderTimelinePreview();
+            }
+        } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            duplicateEvent(seriesIndex, eventIndex);
+            renderTimelineEditor();
+            renderTimelinePreview();
+        }
     });
 }
 

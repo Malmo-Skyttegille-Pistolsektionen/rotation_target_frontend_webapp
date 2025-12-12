@@ -184,22 +184,15 @@ function renderEventsView() {
                                     </div>
                                 </div>
                                 <div class="event-actions">
-                                    <div class="event-menu-container">
-                                        <button class="icon-btn event-menu-btn" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="More actions">
-                                            <span class="icon-text">⋮</span>
-                                        </button>
-                                        <div class="event-menu-dropdown" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                                            <button class="menu-item" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                                                <img src="public/icons/edit_24_regular.svg" alt="Edit Event" width="16" height="16" />
-                                            </button>
-                                            <button class="menu-item" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                                                <img src="public/icons/copy_24_regular.svg" alt="Copy Event" width="16" height="16" />
-                                            </button>
-                                            <button class="menu-item delete-item" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                                                <img src="public/icons/delete_24_regular.svg" alt="Delete Event" width="16" height="16" />
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <button class="icon-btn" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Edit Event">
+                                        <img src="public/icons/edit_24_regular.svg" alt="Edit" width="20" height="20" />
+                                    </button>
+                                    <button class="icon-btn" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Copy Event">
+                                        <img src="public/icons/copy_24_regular.svg" alt="Copy" width="20" height="20" />
+                                    </button>
+                                    <button class="icon-btn delete-btn" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
+                                        <img src="public/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
+                                    </button>
                                 </div>
                             </div>
                         `;
@@ -1455,17 +1448,17 @@ function attachEventsViewListeners() {
     
     // Three-dot menu toggles
     container.addEventListener('click', (e) => {
-        const menuBtn = e.target.closest('.series-menu-btn, .event-menu-btn');
+        const menuBtn = e.target.closest('.series-menu-btn');
         if (menuBtn) {
             e.stopPropagation();
             // Close all other menus
-            document.querySelectorAll('.series-menu-dropdown, .event-menu-dropdown').forEach(menu => {
+            document.querySelectorAll('.series-menu-dropdown').forEach(menu => {
                 if (menu.parentElement !== menuBtn.parentElement) {
                     menu.classList.remove('show');
                 }
             });
             // Toggle this menu
-            const dropdown = menuBtn.parentElement.querySelector('.series-menu-dropdown, .event-menu-dropdown');
+            const dropdown = menuBtn.parentElement.querySelector('.series-menu-dropdown');
             if (dropdown) {
                 dropdown.classList.toggle('show');
             }
@@ -1475,8 +1468,8 @@ function attachEventsViewListeners() {
     
     // Close menus when clicking outside
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.series-menu-container, .event-menu-container')) {
-            document.querySelectorAll('.series-menu-dropdown, .event-menu-dropdown').forEach(menu => {
+        if (!e.target.closest('.series-menu-container')) {
+            document.querySelectorAll('.series-menu-dropdown').forEach(menu => {
                 menu.classList.remove('show');
             });
         }

@@ -176,10 +176,11 @@ function renderEventsView() {
                                         <span class="event-command-badge ${event.command || 'none'}">${event.command ? event.command.toUpperCase() : 'NO CHANGE'}</span>
                                         ${(event.audio_ids && event.audio_ids.length > 0) ? `
                                         <span class="audio-badge">♫ ${event.audio_ids.length}</span>
-                                        <span class="audio-titles">${event.audio_ids.map(id => {
+                                        ${event.audio_ids.map(id => {
                                             const audio = editorState.audios.find(a => a.id === id);
-                                            return audio ? audio.title : `ID ${id}`;
-                                        }).join(', ')}</span>
+                                            const title = audio ? audio.title : `ID ${id}`;
+                                            return `<span class="audio-title-badge" title="${title}">${title}</span>`;
+                                        }).join('')}
                                         ` : ''}
                                     </div>
                                 </div>

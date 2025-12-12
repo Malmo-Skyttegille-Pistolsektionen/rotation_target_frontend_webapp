@@ -120,8 +120,9 @@ function renderEventsView() {
         const totalDuration = series.events.reduce((sum, event) => sum + event.duration, 0);
         
         return `
-            <div class="events-view-series" data-series-index="${seriesIndex}">
+            <div class="events-view-series" data-series-index="${seriesIndex}" draggable="true" id="series-${seriesIndex}">
                 <div class="events-view-series-header ${isCollapsed ? 'collapsed' : ''}">
+                    <div class="series-drag-handle" title="Drag to reorder series">≡</div>
                     <button class="series-toggle-btn" data-series-index="${seriesIndex}" title="Toggle series">
                         <span class="toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
                     </button>
@@ -131,7 +132,10 @@ function renderEventsView() {
                     </div>
                     <div class="series-actions">
                         <button class="secondary small" data-action="add-event-to-series" data-series-index="${seriesIndex}" title="Add Event">+ Event</button>
-                        <button class="secondary small" data-action="duplicate-series" data-series-index="${seriesIndex}" title="Duplicate Series">Duplicate</button>
+                        <button class="secondary small icon-only" data-action="duplicate-series" data-series-index="${seriesIndex}" title="Copy Series">
+                            <img src="/icons/copy_24_regular.svg" alt="Copy" width="18" height="18" />
+                        </button>
+                        <button class="series-menu-btn" data-series-index="${seriesIndex}" title="More actions">⋮</button>
                         <button class="delete-btn small icon-only" data-action="delete-series-events-view" data-series-index="${seriesIndex}" title="Delete Series">
                             <img src="/icons/delete_24_regular.svg" alt="Delete" width="18" height="18" />
                         </button>
@@ -168,7 +172,9 @@ function renderEventsView() {
                                     <button class="secondary small icon-only" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Edit Event">
                                         <img src="/icons/edit_24_regular.svg" alt="Edit" width="18" height="18" />
                                     </button>
-                                    <button class="secondary small" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Duplicate Event">Dup</button>
+                                    <button class="secondary small icon-only" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Copy Event">
+                                        <img src="/icons/copy_24_regular.svg" alt="Copy" width="18" height="18" />
+                                    </button>
                                     <button class="delete-btn small icon-only" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
                                         <img src="/icons/delete_24_regular.svg" alt="Delete" width="18" height="18" />
                                     </button>
@@ -195,6 +201,15 @@ function renderEventsView() {
             </div>
         `;
         container.prepend(batchBar);
+    }
+    
+    // Populate the "Go to series" dropdown
+    const gotoSelect = document.getElementById('goto-series-select');
+    if (gotoSelect) {
+        gotoSelect.innerHTML = '<option value="">Go to series...</option>' + 
+            program.series.map((series, index) => 
+                `<option value="${index}">${series.name || `Series ${index + 1}`}</option>`
+            ).join('');
     }
     
     attachEventsViewListeners();
@@ -254,6 +269,9 @@ function renderEditor() {
             <div class="events-view-header">
                 <h3>Event-Based View</h3>
                 <div class="events-view-actions">
+                    <select id="goto-series-select" class="goto-series-select">
+                        <option value="">Go to series...</option>
+                    </select>
                     <button id="expand-all-series-btn" class="secondary small">Expand All</button>
                     <button id="collapse-all-series-btn" class="secondary small">Collapse All</button>
                 </div>
@@ -907,6 +925,25 @@ function attachEventsViewListeners() {
         });
     }
     
+    // Go to series dropdown
+    const gotoSelect = document.getElementById('goto-series-select');
+    if (gotoSelect) {
+        gotoSelect.addEventListener('change', (e) => {
+            const seriesIndex = e.target.value;
+            if (seriesIndex !== '') {
+                const seriesElement = document.getElementById(`series-${seriesIndex}`);
+                if (seriesElement) {
+                    seriesElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Ensure the series is expanded
+                    editorState.collapsedSeries.delete(parseInt(seriesIndex));
+                    renderEventsView();
+                }
+                // Reset dropdown
+                e.target.value = '';
+            }
+        });
+    }
+    
     // Series toggle buttons
     container.addEventListener('click', (e) => {
         const toggleBtn = e.target.closest('.series-toggle-btn');
@@ -1026,7 +1063,18 @@ function attachEventsViewListeners() {
     
     // Drag and drop for event reordering
     container.addEventListener('dragstart', (e) => {
+        const seriesItem = e.target.closest('.events-view-series');
         const eventItem = e.target.closest('.events-view-item');
+        
+        // Check if dragging a series (by its drag handle)
+        if (seriesItem && e.target.closest('.series-drag-handle')) {
+            seriesItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', 'series-' + seriesItem.dataset.seriesIndex);
+            return;
+        }
+        
+        // Otherwise, handle event dragging
         if (eventItem) {
             eventItem.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
@@ -1035,7 +1083,12 @@ function attachEventsViewListeners() {
     });
     
     container.addEventListener('dragend', (e) => {
+        const seriesItem = e.target.closest('.events-view-series');
         const eventItem = e.target.closest('.events-view-item');
+        
+        if (seriesItem) {
+            seriesItem.classList.remove('dragging');
+        }
         if (eventItem) {
             eventItem.classList.remove('dragging');
         }
@@ -1043,6 +1096,25 @@ function attachEventsViewListeners() {
     
     container.addEventListener('dragover', (e) => {
         e.preventDefault();
+        
+        // Check if dragging a series
+        const draggingSeries = document.querySelector('.events-view-series.dragging');
+        const targetSeries = e.target.closest('.events-view-series');
+        
+        if (draggingSeries && targetSeries && draggingSeries !== targetSeries) {
+            const allSeries = Array.from(container.querySelectorAll('.events-view-series'));
+            const draggingIndex = allSeries.indexOf(draggingSeries);
+            const targetIndex = allSeries.indexOf(targetSeries);
+            
+            if (draggingIndex < targetIndex) {
+                targetSeries.after(draggingSeries);
+            } else {
+                targetSeries.before(draggingSeries);
+            }
+            return;
+        }
+        
+        // Otherwise, handle event dragging
         const draggingItem = document.querySelector('.events-view-item.dragging');
         const targetItem = e.target.closest('.events-view-item');
         
@@ -1068,6 +1140,37 @@ function attachEventsViewListeners() {
     
     container.addEventListener('drop', (e) => {
         e.preventDefault();
+        
+        // Check if dropping a series
+        const draggingSeries = document.querySelector('.events-view-series.dragging');
+        if (draggingSeries) {
+            const allSeries = Array.from(container.querySelectorAll('.events-view-series'));
+            const newSeriesOrder = allSeries.map(seriesElement => {
+                const oldSeriesIndex = parseInt(seriesElement.dataset.seriesIndex);
+                return editorState.program.series[oldSeriesIndex];
+            });
+            
+            // Update the series array with new order
+            editorState.program.series = newSeriesOrder;
+            
+            // Clear collapsed state and rebuild with new indices
+            const wasCollapsed = Array.from(editorState.collapsedSeries);
+            editorState.collapsedSeries.clear();
+            wasCollapsed.forEach(oldIndex => {
+                const series = newSeriesOrder[oldIndex];
+                const newIndex = editorState.program.series.indexOf(series);
+                if (newIndex !== -1) {
+                    editorState.collapsedSeries.add(newIndex);
+                }
+            });
+            
+            // Re-render to update indices
+            renderEventsView();
+            renderTimelinePreview();
+            return;
+        }
+        
+        // Otherwise, handle event dropping
         const draggingItem = document.querySelector('.events-view-item.dragging');
         
         if (draggingItem) {

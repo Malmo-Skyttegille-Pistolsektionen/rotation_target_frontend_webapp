@@ -1404,6 +1404,17 @@ button.small {
 .events-view-actions {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
+}
+
+.goto-series-select {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  background-color: white;
+  cursor: pointer;
+  min-width: 150px;
 }
 
 .events-view-series {
@@ -1412,6 +1423,12 @@ button.small {
   border-radius: 6px;
   background: white;
   overflow: hidden;
+  cursor: move;
+}
+
+.events-view-series.dragging {
+  opacity: 0.5;
+  border: 2px dashed #0078d4;
 }
 
 .events-view-series-header {
@@ -1433,6 +1450,19 @@ button.small {
   border-bottom: none;
 }
 
+.series-drag-handle {
+  cursor: grab;
+  color: #999;
+  font-size: 1.2rem;
+  font-weight: bold;
+  user-select: none;
+  padding: 0 0.25rem;
+}
+
+.series-drag-handle:active {
+  cursor: grabbing;
+}
+
 .series-toggle-btn {
   background: none;
   border: none;
@@ -1447,6 +1477,23 @@ button.small {
 }
 
 .series-toggle-btn:hover {
+  color: #333;
+}
+
+.series-menu-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: #666;
+  line-height: 1;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.series-menu-btn:hover {
+  background: #e0e0e0;
   color: #333;
 }
 

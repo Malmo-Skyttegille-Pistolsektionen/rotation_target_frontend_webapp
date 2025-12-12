@@ -809,11 +809,12 @@ footer {
 }
 
 .modal-header {
-  padding: 1.5rem;
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
+  min-height: 2.5rem;
 }
 
 .modal-header h2 {
@@ -1412,6 +1413,10 @@ button.secondary:hover {
   border-bottom: 2px solid #e0e0e0;
   margin-bottom: 1rem;
   gap: 0;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
 }
 
 .editor-tab {

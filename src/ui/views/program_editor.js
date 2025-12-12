@@ -2149,7 +2149,6 @@ export function initializeProgramEditorModal(onSaveCallback) {
     modal.innerHTML = `
         <div class="modal-content large">
             <div class="modal-header">
-                <h2 id="editor-title">Program Editor</h2>
                 <button id="close-editor-btn" class="close-btn">×</button>
             </div>
             <div id="program-editor-content" class="modal-body"></div>

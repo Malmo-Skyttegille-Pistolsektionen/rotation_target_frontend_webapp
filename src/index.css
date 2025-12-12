@@ -1839,6 +1839,7 @@ button.secondary:hover {
   background: transparent;
   position: relative;
   z-index: 2;
+  text-align: left;
 }
 
 .json-editor-textarea:focus {
@@ -1865,6 +1866,7 @@ button.secondary:hover {
   tab-size: 2;
   pointer-events: none;
   z-index: 1;
+  text-align: left;
 }
 
 .json-error-message {

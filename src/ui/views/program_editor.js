@@ -420,12 +420,12 @@ function renderEditor() {
                 <button id="format-json-btn" class="primary small">Format JSON</button>
                 <span id="json-validation-status" class="json-validation-status"></span>
             </div>
+            <div id="json-error-message" class="json-error-message"></div>
             <div class="json-editor-wrapper">
                 <div class="json-line-numbers" id="json-line-numbers"></div>
                 <textarea id="json-editor-textarea" class="json-editor-textarea" spellcheck="false"></textarea>
                 <pre id="json-highlight-preview" class="json-highlight-preview" aria-hidden="true"><code id="json-highlight-code"></code></pre>
             </div>
-            <div id="json-error-message" class="json-error-message"></div>
         </div>
     `;
     

@@ -975,6 +975,7 @@ footer {
 .drag-handle-btn .drag-handle {
   display: inline-block;
   line-height: 1;
+  color: white;
 }
 
 /* Collapse toggle button */

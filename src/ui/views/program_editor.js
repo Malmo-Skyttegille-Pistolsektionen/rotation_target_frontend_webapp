@@ -247,16 +247,13 @@ function renderAllSeries() {
                 <button class="drag-handle-btn small icon-only" title="Drag to reorder">
                     <span class="drag-handle">≡</span>
                 </button>
-                <button class="collapse-toggle small icon-only" data-action="toggle-series" data-index="${seriesIndex}" title="${isCollapsed ? 'Expand' : 'Collapse'} Series">
-                    <span class="collapse-icon">${isCollapsed ? '▸' : '▾'}</span>
-                </button>
                 <button class="context-menu-btn small icon-only" data-action="series-menu" data-index="${seriesIndex}" title="More options">
                     <span>⋮</span>
                 </button>
-                <h4>Series ${seriesIndex + 1}${series.name ? ': ' + series.name : ''}</h4>
-                <button class="delete-btn small icon-only" data-action="delete-series" data-index="${seriesIndex}" title="Delete Series">
-                    <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
+                <button class="collapse-toggle small icon-only" data-action="toggle-series" data-index="${seriesIndex}" title="${isCollapsed ? 'Expand' : 'Collapse'} Series">
+                    <span class="collapse-icon">${isCollapsed ? '▸' : '▾'}</span>
                 </button>
+                <h4>Series ${seriesIndex + 1}${series.name ? ': ' + series.name : ''}</h4>
             </div>
             <div class="series-content" style="${isCollapsed ? 'display: none;' : ''}">
                 <div class="form-group">
@@ -330,9 +327,6 @@ function renderEvents(events, seriesIndex) {
                     <span>⋮</span>
                 </button>
                 <span>Event ${eventIndex + 1}</span>
-                <button class="delete-btn small icon-only" data-action="delete-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
-                    <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
-                </button>
             </div>
             <div class="event-fields">
                 <div class="form-group inline">

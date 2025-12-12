@@ -1788,6 +1788,11 @@ button.secondary:hover {
   background: #d4f4e8;
 }
 
+.json-validation-status.warning {
+  color: #8a5d00;
+  background: #fff4ce;
+}
+
 .json-validation-status.invalid {
   color: #c42b1c;
   background: #fde7e9;
@@ -1878,6 +1883,15 @@ button.secondary:hover {
   border-left: 4px solid #c42b1c;
   font-size: 0.9rem;
   display: none;
+}
+
+.json-error-message ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.json-error-message li {
+  margin: 0.25rem 0;
 }
 
 button.small {

@@ -8,6 +8,26 @@ import { renderTimeline, TimelineType } from './timeline.js';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-json.js';
 import 'prismjs/themes/prism.css';
+import Ajv from 'ajv';
+
+// JSON Schema validator setup
+let ajv = null;
+let validateSchema = null;
+let programSchema = null;
+
+// Initialize Ajv and load schema
+async function initSchemaValidator() {
+    if (!ajv) {
+        ajv = new Ajv({ allErrors: true, verbose: true });
+        try {
+            const response = await fetch('/program.schema.json');
+            programSchema = await response.json();
+            validateSchema = ajv.compile(programSchema);
+        } catch (error) {
+            console.error('Failed to load JSON schema:', error);
+        }
+    }
+}
 
 // State for the editor
 let editorState = {
@@ -65,6 +85,9 @@ export async function openProgramEditor(program = null) {
     editorState.isEditing = program !== null;
     editorState.originalProgramId = program ? program.id : null;
     editorState.program = program ? JSON.parse(JSON.stringify(program)) : createEmptyProgram();
+    
+    // Initialize schema validator
+    await initSchemaValidator();
     
     // Load audios if not already cached
     if (editorState.audios.length === 0) {
@@ -945,22 +968,60 @@ function validateJson() {
     
     if (!textarea) return;
     
+    // First, validate JSON syntax
+    let parsed;
     try {
-        const parsed = JSON.parse(textarea.value);
+        parsed = JSON.parse(textarea.value);
         editorState.jsonError = null;
-        statusElement.textContent = '✓ Valid JSON';
-        statusElement.className = 'json-validation-status valid';
-        errorElement.textContent = '';
-        errorElement.style.display = 'none';
-        return parsed;
     } catch (error) {
         editorState.jsonError = error.message;
-        statusElement.textContent = '✗ Invalid JSON';
+        statusElement.textContent = '✗ Invalid JSON Syntax';
         statusElement.className = 'json-validation-status invalid';
-        errorElement.textContent = `Error: ${error.message}`;
+        errorElement.textContent = `Syntax Error: ${error.message}`;
         errorElement.style.display = 'block';
         return null;
     }
+    
+    // If JSON syntax is valid, validate against schema
+    if (validateSchema) {
+        const valid = validateSchema(parsed);
+        
+        if (valid) {
+            statusElement.textContent = '✓ Valid JSON & Schema';
+            statusElement.className = 'json-validation-status valid';
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        } else {
+            // Schema validation failed
+            statusElement.textContent = '⚠ Valid JSON, Invalid Schema';
+            statusElement.className = 'json-validation-status warning';
+            
+            // Format schema validation errors
+            const errors = validateSchema.errors || [];
+            const errorMessages = errors.map(err => {
+                const path = err.instancePath || 'root';
+                const message = err.message || 'Unknown error';
+                if (err.keyword === 'required') {
+                    return `${path}: missing required property '${err.params.missingProperty}'`;
+                } else if (err.keyword === 'type') {
+                    return `${path}: must be ${err.params.type} (got ${typeof err.data})`;
+                } else {
+                    return `${path}: ${message}`;
+                }
+            });
+            
+            errorElement.innerHTML = `<strong>Schema Validation Errors:</strong><ul>${errorMessages.map(msg => `<li>${escapeHtml(msg)}</li>`).join('')}</ul>`;
+            errorElement.style.display = 'block';
+        }
+    } else {
+        // Schema not loaded yet, only show JSON syntax validation
+        statusElement.textContent = '✓ Valid JSON (Schema not loaded)';
+        statusElement.className = 'json-validation-status valid';
+        errorElement.textContent = '';
+        errorElement.style.display = 'none';
+    }
+    
+    return parsed;
 }
 
 /**

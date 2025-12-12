@@ -13,9 +13,8 @@ let editorState = {
     originalProgramId: null,
     audios: [], // Cache of available audios
     timelineMode: null, // null = auto, TimelineType.Default, or TimelineType.Field
-    collapsedSeries: new Set(), // Track which series are collapsed
+    collapsedSeries: new Set(), // Track which series are collapsed (used in both Form and Events views)
     jsonError: null, // JSON validation error
-    collapsedSeries: new Set(), // Track which series are collapsed in events view
     selectedEvents: new Set(), // Track selected events for batch operations (format: "seriesIndex-eventIndex")
     timelineZoom: 1, // Zoom level for timeline editor (1 = default, 40px per second)
     timelineSelectedSeries: null, // Currently selected series in timeline view (null = show all)
@@ -1923,7 +1922,7 @@ function renderTimelineEditor() {
                                     </div>
                                     <div class="timeline-event-body">
                                         <div class="timeline-event-duration">${durationSeconds.toFixed(1)}s</div>
-                                        <div class="timeline-event-command">${event.command ? event.command.toUpperCase() : 'NO CHANGE'}</div>
+                                        <div class="timeline-event-command">${event.command ? escapeHtml(event.command.toUpperCase()) : 'NO CHANGE'}</div>
                                         ${(event.audio_ids && event.audio_ids.length > 0) ? `<div class="timeline-event-audio">♫ ${event.audio_ids.length}</div>` : ''}
                                     </div>
                                     <div class="timeline-event-actions">

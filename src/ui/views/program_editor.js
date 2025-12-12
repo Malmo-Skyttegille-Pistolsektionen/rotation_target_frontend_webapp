@@ -247,13 +247,13 @@ function renderAllSeries() {
                 <button class="drag-handle-btn small icon-only" title="Drag to reorder">
                     <span class="drag-handle">≡</span>
                 </button>
-                <button class="context-menu-btn small icon-only" data-action="series-menu" data-index="${seriesIndex}" title="More options">
-                    <span>⋮</span>
-                </button>
                 <button class="collapse-toggle small icon-only" data-action="toggle-series" data-index="${seriesIndex}" title="${isCollapsed ? 'Expand' : 'Collapse'} Series">
                     <span class="collapse-icon">${isCollapsed ? '▸' : '▾'}</span>
                 </button>
                 <h4>Series ${seriesIndex + 1}${series.name ? ': ' + series.name : ''}</h4>
+                <button class="context-menu-btn small icon-only" data-action="series-menu" data-index="${seriesIndex}" title="More options">
+                    <span>⋮</span>
+                </button>
             </div>
             <div class="series-content" style="${isCollapsed ? 'display: none;' : ''}">
                 <div class="form-group">
@@ -323,10 +323,10 @@ function renderEvents(events, seriesIndex) {
                 <button class="drag-handle-btn small icon-only" title="Drag to reorder">
                     <span class="drag-handle">≡</span>
                 </button>
+                <span>Event ${eventIndex + 1}</span>
                 <button class="context-menu-btn small icon-only" data-action="event-menu" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="More options">
                     <span>⋮</span>
                 </button>
-                <span>Event ${eventIndex + 1}</span>
             </div>
             <div class="event-fields">
                 <div class="form-group inline">
@@ -417,7 +417,7 @@ function showSeriesContextMenu(event, seriesIndex) {
         <button data-action="move-series-down" data-index="${seriesIndex}" ${isLast ? 'disabled' : ''}>Move down</button>
         <button data-action="move-series-bottom" data-index="${seriesIndex}" ${isLast ? 'disabled' : ''}>Move to bottom</button>
         <hr>
-        <button data-action="duplicate-series" data-index="${seriesIndex}">Duplicate</button>
+        <button data-action="duplicate-series" data-index="${seriesIndex}">Copy</button>
         <button data-action="delete-series-ctx" data-index="${seriesIndex}">Delete</button>
     `;
     
@@ -495,7 +495,7 @@ function showEventContextMenu(event, seriesIndex, eventIndex) {
         <button data-action="move-event-down" data-series="${seriesIndex}" data-event="${eventIndex}" ${isLast ? 'disabled' : ''}>Move down</button>
         <button data-action="move-event-bottom" data-series="${seriesIndex}" data-event="${eventIndex}" ${isLast ? 'disabled' : ''}>Move to bottom</button>
         <hr>
-        <button data-action="duplicate-event" data-series="${seriesIndex}" data-event="${eventIndex}">Duplicate</button>
+        <button data-action="duplicate-event" data-series="${seriesIndex}" data-event="${eventIndex}">Copy</button>
         <button data-action="delete-event-ctx" data-series="${seriesIndex}" data-event="${eventIndex}">Delete</button>
     `;
     

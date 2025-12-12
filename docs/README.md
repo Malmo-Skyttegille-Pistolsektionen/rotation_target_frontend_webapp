@@ -22,6 +22,12 @@ This directory contains investigation reports and documentation for the MSG Rota
    - Mobile-first design patterns
    - 30-minute read
 
+3. **[patternfly-mcp-assessment.md](./patternfly-mcp-assessment.md)**
+   - Specific assessment of PatternFly MCP server
+   - Value proposition for this project
+   - When to use (or not use) the MCP server
+   - 5-minute read
+
 ### Key Findings
 
 🚨 **Critical:** Current application has **zero mobile responsiveness** (no media queries, fixed widths)

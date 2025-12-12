@@ -18,7 +18,12 @@ let programSchema = null;
 // Initialize Ajv and load schema
 async function initSchemaValidator() {
     if (!ajv) {
-        ajv = new Ajv({ allErrors: true, verbose: true });
+        // Don't validate the schema itself, just use it
+        ajv = new Ajv({ 
+            allErrors: true, 
+            verbose: true,
+            validateSchema: false  // Skip validation of the schema itself
+        });
         try {
             const response = await fetch('/program.schema.json');
             programSchema = await response.json();
@@ -987,30 +992,65 @@ function validateJson() {
         const valid = validateSchema(parsed);
         
         if (valid) {
-            statusElement.textContent = '✓ Valid JSON & Schema';
+            statusElement.textContent = '✓ JSON complies with schema';
             statusElement.className = 'json-validation-status valid';
             errorElement.textContent = '';
             errorElement.style.display = 'none';
         } else {
             // Schema validation failed
-            statusElement.textContent = '⚠ Valid JSON, Invalid Schema';
+            statusElement.textContent = '⚠ JSON does not comply with schema';
             statusElement.className = 'json-validation-status warning';
             
-            // Format schema validation errors
+            // Format schema validation errors with detailed information
             const errors = validateSchema.errors || [];
             const errorMessages = errors.map(err => {
-                const path = err.instancePath || 'root';
-                const message = err.message || 'Unknown error';
+                const path = err.instancePath || '/';
+                let message = '';
+                
                 if (err.keyword === 'required') {
-                    return `${path}: missing required property '${err.params.missingProperty}'`;
+                    const missingProp = err.params.missingProperty;
+                    message = `<strong>Path:</strong> <code>${escapeHtml(path)}</code><br>`;
+                    message += `<strong>Error:</strong> Missing required property <code>${escapeHtml(missingProp)}</code><br>`;
+                    message += `<strong>Fix:</strong> Add the missing property to the object`;
                 } else if (err.keyword === 'type') {
-                    return `${path}: must be ${err.params.type} (got ${typeof err.data})`;
+                    const expectedType = err.params.type;
+                    const actualType = Array.isArray(err.data) ? 'array' : (err.data === null ? 'null' : typeof err.data);
+                    message = `<strong>Path:</strong> <code>${escapeHtml(path)}</code><br>`;
+                    message += `<strong>Error:</strong> Expected type <code>${escapeHtml(expectedType)}</code>, but got <code>${escapeHtml(actualType)}</code><br>`;
+                    message += `<strong>Current value:</strong> <code>${escapeHtml(JSON.stringify(err.data))}</code><br>`;
+                    message += `<strong>Fix:</strong> Change the value to be of type <code>${escapeHtml(expectedType)}</code>`;
+                } else if (err.keyword === 'enum') {
+                    const allowedValues = err.params.allowedValues || [];
+                    message = `<strong>Path:</strong> <code>${escapeHtml(path)}</code><br>`;
+                    message += `<strong>Error:</strong> Value must be one of: ${allowedValues.map(v => `<code>${escapeHtml(JSON.stringify(v))}</code>`).join(', ')}<br>`;
+                    message += `<strong>Current value:</strong> <code>${escapeHtml(JSON.stringify(err.data))}</code><br>`;
+                    message += `<strong>Fix:</strong> Use one of the allowed values`;
+                } else if (err.keyword === 'additionalProperties') {
+                    const additionalProp = err.params.additionalProperty;
+                    message = `<strong>Path:</strong> <code>${escapeHtml(path)}</code><br>`;
+                    message += `<strong>Error:</strong> Additional property <code>${escapeHtml(additionalProp)}</code> is not allowed<br>`;
+                    message += `<strong>Fix:</strong> Remove the <code>${escapeHtml(additionalProp)}</code> property`;
+                } else if (err.keyword === 'minimum' || err.keyword === 'maximum') {
+                    const limit = err.params.limit;
+                    const comparison = err.params.comparison || (err.keyword === 'minimum' ? '>=' : '<=');
+                    message = `<strong>Path:</strong> <code>${escapeHtml(path)}</code><br>`;
+                    message += `<strong>Error:</strong> Value must be ${escapeHtml(comparison)} ${limit}<br>`;
+                    message += `<strong>Current value:</strong> <code>${escapeHtml(JSON.stringify(err.data))}</code><br>`;
+                    message += `<strong>Fix:</strong> Change the value to meet the constraint`;
                 } else {
-                    return `${path}: ${message}`;
+                    // Generic error format
+                    message = `<strong>Path:</strong> <code>${escapeHtml(path)}</code><br>`;
+                    message += `<strong>Error:</strong> ${escapeHtml(err.message || 'Validation failed')}<br>`;
+                    if (err.data !== undefined) {
+                        message += `<strong>Current value:</strong> <code>${escapeHtml(JSON.stringify(err.data))}</code><br>`;
+                    }
+                    message += `<strong>Fix:</strong> Check the value against the schema requirements`;
                 }
+                
+                return message;
             });
             
-            errorElement.innerHTML = `<strong>Schema Validation Errors:</strong><ul>${errorMessages.map(msg => `<li>${escapeHtml(msg)}</li>`).join('')}</ul>`;
+            errorElement.innerHTML = `<strong>Schema Validation Errors (${errors.length}):</strong><div class="schema-error-list">${errorMessages.map(msg => `<div class="schema-error-item">${msg}</div>`).join('')}</div>`;
             errorElement.style.display = 'block';
         }
     } else {

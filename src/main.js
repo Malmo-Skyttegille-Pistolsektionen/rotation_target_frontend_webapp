@@ -1,3 +1,10 @@
+// Import Shoelace
+import '@shoelace-style/shoelace/dist/themes/light.css';
+import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js';
+
+// Set the base path to the Shoelace assets (local for offline support)
+setBasePath('/shoelace-assets/');
+
 import { initializeRunTab } from './ui/views/run_tab.js';
 import { initializeAudiosTab } from './ui/views/audios_tab.js';
 import { initializeProgramsTab } from './ui/views/programs_tab.js';
@@ -36,63 +43,77 @@ document.addEventListener("DOMContentLoaded", async () => {
   const audioTabButton = document.getElementById("audio-tab-button");
   const programsTabButton = document.getElementById("programs-tab-button");
   const settingsTabButton = document.getElementById("settings-tab-button");
+  
+  // Mobile navigation buttons
+  const mobileRunTabButton = document.getElementById("mobile-run-tab-button");
+  const mobileAudioTabButton = document.getElementById("mobile-audio-tab-button");
+  const mobileProgramsTabButton = document.getElementById("mobile-programs-tab-button");
+  const mobileSettingsTabButton = document.getElementById("mobile-settings-tab-button");
+  
   const runSection = document.getElementById("run-section");
   const audioSection = document.getElementById("audio-section");
   const programsSection = document.getElementById("programs-section");
   const settingsSection = document.getElementById("settings-section");
-  // Tab switching logic
+  
+  // Helper function to update both desktop and mobile tab states
+  function setActiveTab(tab) {
+    // Desktop tabs
+    runTabButton.classList.toggle("active", tab === "run");
+    audioTabButton.classList.toggle("active", tab === "audio");
+    programsTabButton.classList.toggle("active", tab === "programs");
+    settingsTabButton.classList.toggle("active", tab === "settings");
+    
+    // Mobile tabs
+    mobileRunTabButton.classList.toggle("active", tab === "run");
+    mobileAudioTabButton.classList.toggle("active", tab === "audio");
+    mobileProgramsTabButton.classList.toggle("active", tab === "programs");
+    mobileSettingsTabButton.classList.toggle("active", tab === "settings");
+    
+    // Sections
+    runSection.classList.toggle("hidden", tab !== "run");
+    audioSection.classList.toggle("hidden", tab !== "audio");
+    programsSection.classList.toggle("hidden", tab !== "programs");
+    settingsSection.classList.toggle("hidden", tab !== "settings");
+  }
+  // Tab switching logic - Desktop
   runTabButton.addEventListener("click", async () => {
-    runTabButton.classList.add("active");
-    audioTabButton.classList.remove("active");
-    programsTabButton.classList.remove("active");
-    settingsTabButton.classList.remove("active");
-
-    runSection.classList.remove("hidden");
-    audioSection.classList.add("hidden");
-    programsSection.classList.add("hidden");
-    settingsSection.classList.add("hidden");
+    setActiveTab("run");
     await initializeRunTab();
   });
 
   audioTabButton.addEventListener("click", async () => {
-    audioTabButton.classList.add("active");
-    runTabButton.classList.remove("active");
-    programsTabButton.classList.remove("active");
-    settingsTabButton.classList.remove("active");
-
-    audioSection.classList.remove("hidden");
-    runSection.classList.add("hidden");
-    programsSection.classList.add("hidden");
-    settingsSection.classList.add("hidden");
-
+    setActiveTab("audio");
     await initializeAudiosTab();
   });
 
   programsTabButton.addEventListener("click", () => {
-    programsTabButton.classList.add("active");
-    runTabButton.classList.remove("active");
-    audioTabButton.classList.remove("active");
-    settingsTabButton.classList.remove("active");
-
-    programsSection.classList.remove("hidden");
-    runSection.classList.add("hidden");
-    audioSection.classList.add("hidden");
-    settingsSection.classList.add("hidden");
-
+    setActiveTab("programs");
     initializeProgramsTab();
   });
 
   settingsTabButton.addEventListener("click", () => {
-    settingsTabButton.classList.add("active");
-    runTabButton.classList.remove("active");
-    audioTabButton.classList.remove("active");
-    programsTabButton.classList.remove("active");
+    setActiveTab("settings");
+    initializeSettingsTab();
+  });
+  
+  // Tab switching logic - Mobile
+  mobileRunTabButton.addEventListener("click", async () => {
+    setActiveTab("run");
+    await initializeRunTab();
+  });
 
-    settingsSection.classList.remove("hidden");
-    runSection.classList.add("hidden");
-    audioSection.classList.add("hidden");
-    programsSection.classList.add("hidden");
+  mobileAudioTabButton.addEventListener("click", async () => {
+    setActiveTab("audio");
+    await initializeAudiosTab();
+  });
 
+  mobileProgramsTabButton.addEventListener("click", () => {
+    setActiveTab("programs");
+    initializeProgramsTab();
+  });
+
+  mobileSettingsTabButton.addEventListener("click", () => {
+    setActiveTab("settings");
     initializeSettingsTab();
   });
 

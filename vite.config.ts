@@ -3,6 +3,7 @@ import fs from 'fs';
 import type { ServerResponse } from 'http';
 import { SSETypes } from "./src/common/sse-types.js";
 import path from 'path';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 // Mock server URLs
 const SERVER_BASE_URL = "http://localhost";
@@ -250,14 +251,20 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version)
   },
-  // build: {
-  //   minify: false
-  // },
   server: {
     host: 'localhost',
     port: 8080,
   },
   plugins: [
+    // Copy Shoelace assets for offline use
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'node_modules/@shoelace-style/shoelace/dist/assets',
+          dest: 'shoelace-assets'
+        }
+      ]
+    }),
     // {
     //   name: 'requestLogger',
     //   configurePreviewServer: logRequests, // log in preview mode

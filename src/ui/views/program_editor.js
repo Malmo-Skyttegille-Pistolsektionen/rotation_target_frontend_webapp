@@ -138,23 +138,17 @@ function renderEventsView() {
                         <span class="toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
                     </button>
                     <div class="series-info">
-                        <h4>${series.name || `Series ${seriesIndex + 1}`}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
+                        <h4>${series.name || `Series ${seriesIndex + 1}`}</h4>
                         <span class="series-meta">${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s</span>
                     </div>
                     <div class="series-actions">
-                        <div class="series-menu-container">
-                            <button class="icon-btn series-menu-btn" data-series-index="${seriesIndex}" title="More actions">
-                                <span class="icon-text">⋮</span>
-                            </button>
-                            <div class="series-menu-dropdown" data-series-index="${seriesIndex}">
-                                <button class="menu-item" data-action="add-event-to-series" data-series-index="${seriesIndex}">
-                                    <img src="public/icons/add_24_regular.svg" alt="Add Event" width="16" height="16" />
-                                </button>
-                                <button class="menu-item" data-action="duplicate-series" data-series-index="${seriesIndex}">
-                                    <img src="public/icons/copy_24_regular.svg" alt="Copy Series" width="16" height="16" />
-                                </button>
-                            </div>
-                        </div>
+                        <label class="series-optional-checkbox">
+                            <input type="checkbox" class="series-optional-input" data-series-index="${seriesIndex}" ${series.optional ? 'checked' : ''} />
+                            <span>Optional</span>
+                        </label>
+                        <button class="icon-btn" data-action="duplicate-series" data-series-index="${seriesIndex}" title="Copy Series">
+                            <img src="public/icons/copy_24_regular.svg" alt="Copy" width="20" height="20" />
+                        </button>
                         <button class="icon-btn delete-btn" data-action="delete-series-events-view" data-series-index="${seriesIndex}" title="Delete Series">
                             <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
                         </button>
@@ -173,25 +167,21 @@ function renderEventsView() {
                         return `
                             <div class="events-view-item ${isSelected ? 'selected' : ''}" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-event-id="${eventId}" draggable="true" title="Drag to reorder">
                                 <div class="event-select">
-                                    <input type="checkbox" class="event-checkbox" data-event-id="${eventId}" ${isSelected ? 'checked' : ''} />
                                     <div class="event-number">${eventIndex + 1}</div>
+                                    <input type="checkbox" class="event-checkbox" data-event-id="${eventId}" ${isSelected ? 'checked' : ''} />
                                 </div>
                                 <div class="event-details">
                                     <div class="event-detail-row">
                                         <span>Duration: ${(event.duration / 1000).toFixed(1)}s</span>
                                         <span class="event-command-badge ${event.command || 'none'}">${event.command ? event.command.toUpperCase() : 'NO CHANGE'}</span>
+                                        ${(event.audio_ids && event.audio_ids.length > 0) ? `
+                                        <span class="audio-badge">♫ ${event.audio_ids.length}</span>
+                                        <span class="audio-titles">${event.audio_ids.map(id => {
+                                            const audio = editorState.audios.find(a => a.id === id);
+                                            return audio ? audio.title : `ID ${id}`;
+                                        }).join(', ')}</span>
+                                        ` : ''}
                                     </div>
-                                    ${(event.audio_ids && event.audio_ids.length > 0) ? `
-                                    <div class="event-detail-row audio-section">
-                                        <span class="audio-badge">♫ ${event.audio_ids.length} audio${event.audio_ids.length !== 1 ? 's' : ''}</span>
-                                        <div class="audio-list-items">
-                                            ${event.audio_ids.map(id => {
-                                                const audio = editorState.audios.find(a => a.id === id);
-                                                return `<div class="audio-item">${audio ? audio.title : `ID ${id}`}</div>`;
-                                            }).join('')}
-                                        </div>
-                                    </div>
-                                    ` : ''}
                                 </div>
                                 <div class="event-actions">
                                     <div class="event-menu-container">
@@ -346,10 +336,7 @@ function renderEditor() {
                 <div class="checkbox-group">
                     <label>
                         <input type="checkbox" id="events-program-readonly" />
-                        <span class="checkbox-label-text">
-                            Read-only
-                            <span class="checkbox-help-text">(prevents deletion/editing)</span>
-                        </span>
+                        Read-only (prevents deletion/editing)
                     </label>
                 </div>
             </div>
@@ -1557,6 +1544,13 @@ function attachEventsViewListeners() {
                 editorState.selectedEvents.delete(eventId);
             }
             renderEventsView();
+        }
+        
+        // Series optional checkbox
+        if (e.target.classList.contains('series-optional-input')) {
+            const seriesIndex = parseInt(e.target.dataset.seriesIndex);
+            editorState.program.series[seriesIndex].optional = e.target.checked;
+            renderTimelinePreview();
         }
     });
     

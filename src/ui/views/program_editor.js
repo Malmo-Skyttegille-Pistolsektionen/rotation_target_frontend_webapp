@@ -131,13 +131,26 @@ function renderEventsView() {
                         <span class="series-meta">${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s ${series.optional ? '• Optional' : ''}</span>
                     </div>
                     <div class="series-actions">
-                        <button class="secondary small" data-action="add-event-to-series" data-series-index="${seriesIndex}" title="Add Event">+ Event</button>
-                        <button class="secondary small icon-only" data-action="duplicate-series" data-series-index="${seriesIndex}" title="Copy Series">
-                            <img src="/icons/copy_24_regular.svg" alt="Copy" width="18" height="18" />
-                        </button>
-                        <button class="series-menu-btn" data-series-index="${seriesIndex}" title="More actions">⋮</button>
-                        <button class="delete-btn small icon-only" data-action="delete-series-events-view" data-series-index="${seriesIndex}" title="Delete Series">
-                            <img src="/icons/delete_24_regular.svg" alt="Delete" width="18" height="18" />
+                        <div class="series-menu-container">
+                            <button class="icon-btn series-menu-btn" data-series-index="${seriesIndex}" title="More actions">
+                                <span class="icon-text">⋮</span>
+                            </button>
+                            <div class="series-menu-dropdown" data-series-index="${seriesIndex}">
+                                <button class="menu-item" data-action="add-event-to-series" data-series-index="${seriesIndex}">
+                                    <span>Add Event</span>
+                                </button>
+                                <button class="menu-item" data-action="duplicate-series" data-series-index="${seriesIndex}">
+                                    <img src="/icons/copy_24_regular.svg" alt="Copy" width="16" height="16" />
+                                    <span>Copy Series</span>
+                                </button>
+                                <button class="menu-item delete-item" data-action="delete-series-events-view" data-series-index="${seriesIndex}">
+                                    <img src="/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
+                                    <span>Delete Series</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="icon-btn delete-btn" data-action="delete-series-events-view" data-series-index="${seriesIndex}" title="Delete Series">
+                            <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
                         </button>
                     </div>
                 </div>
@@ -169,14 +182,26 @@ function renderEventsView() {
                                     ${audioTitles ? `<div class="event-detail-row audio-list">${audioTitles}</div>` : ''}
                                 </div>
                                 <div class="event-actions">
-                                    <button class="secondary small icon-only" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Edit Event">
-                                        <img src="/icons/edit_24_regular.svg" alt="Edit" width="18" height="18" />
+                                    <button class="icon-btn" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Edit Event">
+                                        <img src="/icons/edit_24_regular.svg" alt="Edit" width="20" height="20" />
                                     </button>
-                                    <button class="secondary small icon-only" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Copy Event">
-                                        <img src="/icons/copy_24_regular.svg" alt="Copy" width="18" height="18" />
-                                    </button>
-                                    <button class="delete-btn small icon-only" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
-                                        <img src="/icons/delete_24_regular.svg" alt="Delete" width="18" height="18" />
+                                    <div class="event-menu-container">
+                                        <button class="icon-btn event-menu-btn" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="More actions">
+                                            <span class="icon-text">⋮</span>
+                                        </button>
+                                        <div class="event-menu-dropdown" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                                            <button class="menu-item" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                                                <img src="/icons/copy_24_regular.svg" alt="Copy" width="16" height="16" />
+                                                <span>Copy Event</span>
+                                            </button>
+                                            <button class="menu-item delete-item" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                                                <img src="/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
+                                                <span>Delete Event</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button class="icon-btn delete-btn" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
+                                        <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
                                     </button>
                                 </div>
                             </div>
@@ -210,6 +235,15 @@ function renderEventsView() {
             program.series.map((series, index) => 
                 `<option value="${index}">${series.name || `Series ${index + 1}`}</option>`
             ).join('');
+    }
+    
+    // Update the summary
+    const summaryEl = document.getElementById('events-view-summary');
+    if (summaryEl) {
+        const totalEvents = program.series.reduce((sum, series) => sum + series.events.length, 0);
+        const totalDuration = program.series.reduce((sum, series) => 
+            sum + series.events.reduce((s, e) => s + e.duration, 0), 0);
+        summaryEl.textContent = `${program.series.length} series • ${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s total`;
     }
     
     attachEventsViewListeners();
@@ -267,7 +301,7 @@ function renderEditor() {
         </div>
         <div class="editor-tab-content" id="editor-tab-events">
             <div class="events-view-header">
-                <h3>Event-Based View</h3>
+                <h3 id="events-view-summary"></h3>
                 <div class="events-view-actions">
                     <select id="goto-series-select" class="goto-series-select">
                         <option value="">Go to series...</option>
@@ -943,6 +977,35 @@ function attachEventsViewListeners() {
             }
         });
     }
+    
+    // Three-dot menu toggles
+    container.addEventListener('click', (e) => {
+        const menuBtn = e.target.closest('.series-menu-btn, .event-menu-btn');
+        if (menuBtn) {
+            e.stopPropagation();
+            // Close all other menus
+            document.querySelectorAll('.series-menu-dropdown, .event-menu-dropdown').forEach(menu => {
+                if (menu.parentElement !== menuBtn.parentElement) {
+                    menu.classList.remove('show');
+                }
+            });
+            // Toggle this menu
+            const dropdown = menuBtn.parentElement.querySelector('.series-menu-dropdown, .event-menu-dropdown');
+            if (dropdown) {
+                dropdown.classList.toggle('show');
+            }
+            return;
+        }
+    });
+    
+    // Close menus when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.series-menu-container, .event-menu-container')) {
+            document.querySelectorAll('.series-menu-dropdown, .event-menu-dropdown').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
     
     // Series toggle buttons
     container.addEventListener('click', (e) => {

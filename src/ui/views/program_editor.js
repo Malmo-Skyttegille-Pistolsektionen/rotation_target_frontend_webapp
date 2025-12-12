@@ -1983,10 +1983,7 @@ function attachTimelineEditorListeners() {
     if (window.timelineEditorListenersInitialized) return;
     window.timelineEditorListenersInitialized = true;
     
-    const container = document.getElementById('timeline-editor-content');
-    if (!container) return;
-    
-    // Series selector - on persistent header, so need to check on each call
+    // Get the persistent parent container for event delegation
     const timelineEditorContainer = document.getElementById('editor-tab-timeline');
     if (!timelineEditorContainer) return;
     
@@ -2016,8 +2013,8 @@ function attachTimelineEditorListeners() {
         }
     });
     
-    // Event selection via checkboxes - use event delegation on container
-    container.addEventListener('change', (e) => {
+    // Event selection via checkboxes - use event delegation on persistent parent
+    timelineEditorContainer.addEventListener('change', (e) => {
         if (e.target.classList.contains('timeline-event-checkbox')) {
             const eventId = e.target.dataset.eventId;
             if (e.target.checked) {
@@ -2029,8 +2026,8 @@ function attachTimelineEditorListeners() {
         }
     });
     
-    // Event actions - use event delegation on container
-    container.addEventListener('click', (e) => {
+    // Event actions - use event delegation on persistent parent
+    timelineEditorContainer.addEventListener('click', (e) => {
         // Handle action buttons (edit, copy, delete)
         const actionBtn = e.target.closest('[data-action]');
         if (actionBtn) {
@@ -2067,8 +2064,8 @@ function attachTimelineEditorListeners() {
         }
     });
     
-    // Drag and drop for event reordering
-    container.addEventListener('dragstart', (e) => {
+    // Drag and drop for event reordering - use event delegation on persistent parent
+    timelineEditorContainer.addEventListener('dragstart', (e) => {
         const timelineEvent = e.target.closest('.timeline-event');
         if (timelineEvent) {
             timelineEvent.classList.add('dragging');
@@ -2077,14 +2074,14 @@ function attachTimelineEditorListeners() {
         }
     });
     
-    container.addEventListener('dragend', (e) => {
+    timelineEditorContainer.addEventListener('dragend', (e) => {
         const timelineEvent = e.target.closest('.timeline-event');
         if (timelineEvent) {
             timelineEvent.classList.remove('dragging');
         }
     });
     
-    container.addEventListener('dragover', (e) => {
+    timelineEditorContainer.addEventListener('dragover', (e) => {
         e.preventDefault();
         const draggingItem = document.querySelector('.timeline-event.dragging');
         const targetItem = e.target.closest('.timeline-event');
@@ -2109,7 +2106,7 @@ function attachTimelineEditorListeners() {
         }
     });
     
-    container.addEventListener('drop', (e) => {
+    timelineEditorContainer.addEventListener('drop', (e) => {
         e.preventDefault();
         const draggingItem = document.querySelector('.timeline-event.dragging');
         
@@ -2133,8 +2130,8 @@ function attachTimelineEditorListeners() {
         }
     });
     
-    // Keyboard navigation
-    container.addEventListener('keydown', (e) => {
+    // Keyboard navigation - use event delegation on persistent parent
+    timelineEditorContainer.addEventListener('keydown', (e) => {
         const focusedEvent = document.activeElement.closest('.timeline-event');
         if (!focusedEvent) return;
         

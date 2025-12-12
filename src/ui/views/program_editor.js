@@ -1808,6 +1808,20 @@ function attachEventsViewListeners() {
 }
 
 /**
+ * Escape HTML to prevent XSS attacks
+ */
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
  * Render the timeline-based editor view
  */
 function renderTimelineEditor() {
@@ -1819,7 +1833,7 @@ function renderTimelineEditor() {
     if (seriesSelect) {
         seriesSelect.innerHTML = '<option value="">All Series</option>' + 
             program.series.map((series, index) => 
-                `<option value="${index}" ${editorState.timelineSelectedSeries === index ? 'selected' : ''}>${series.name || `Series ${index + 1}`}</option>`
+                `<option value="${index}" ${editorState.timelineSelectedSeries === index ? 'selected' : ''}>${escapeHtml(series.name || `Series ${index + 1}`)}</option>`
             ).join('');
     }
     
@@ -1841,7 +1855,7 @@ function renderTimelineEditor() {
             return `
                 <div class="timeline-series-container" data-series-index="${seriesIndex}">
                     <div class="timeline-series-header">
-                        <h4>${series.name || `Series ${seriesIndex + 1}`}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
+                        <h4>${escapeHtml(series.name || `Series ${seriesIndex + 1}`)}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
                     </div>
                     <p class="empty-message">No events in this series.</p>
                 </div>
@@ -1869,7 +1883,7 @@ function renderTimelineEditor() {
         return `
             <div class="timeline-series-container" data-series-index="${seriesIndex}">
                 <div class="timeline-series-header">
-                    <h4>${series.name || `Series ${seriesIndex + 1}`}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
+                    <h4>${escapeHtml(series.name || `Series ${seriesIndex + 1}`)}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
                     <span class="series-meta">Total: ${(totalDuration / 1000).toFixed(1)}s</span>
                 </div>
                 <div class="timeline-track-container">
@@ -1885,12 +1899,14 @@ function renderTimelineEditor() {
                             
                             const audioTitles = (event.audio_ids || []).map(id => {
                                 const audio = editorState.audios.find(a => a.id === id);
-                                return audio ? audio.title : `ID ${id}`;
+                                return audio ? escapeHtml(audio.title) : `ID ${id}`;
                             }).join(', ');
                             
                             let commandClass = 'no-command';
                             if (event.command === 'show') commandClass = 'show-command';
                             else if (event.command === 'hide') commandClass = 'hide-command';
+                            
+                            const tooltipText = `${event.command ? escapeHtml(event.command.toUpperCase()) : 'NO CHANGE'}: ${durationSeconds.toFixed(1)}s${audioTitles ? '\nAudios: ' + audioTitles : ''}`;
                             
                             return `
                                 <div class="timeline-event ${commandClass} ${isSelected ? 'selected' : ''}" 
@@ -1900,7 +1916,7 @@ function renderTimelineEditor() {
                                      style="left: ${leftPosition}px; width: ${width}px;"
                                      draggable="true"
                                      tabindex="0"
-                                     title="${event.command ? event.command.toUpperCase() : 'NO CHANGE'}: ${durationSeconds.toFixed(1)}s${audioTitles ? '\nAudios: ' + audioTitles : ''}">
+                                     title="${tooltipText}">
                                     <div class="timeline-event-header">
                                         <input type="checkbox" class="timeline-event-checkbox" data-event-id="${eventId}" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation()" />
                                         <span class="timeline-event-number">${eventIndex + 1}</span>

@@ -244,9 +244,14 @@ function renderAllSeries() {
         return `
         <div class="series-item ${isCollapsed ? 'collapsed' : ''}" data-series-index="${seriesIndex}" draggable="true">
             <div class="series-header">
-                <span class="drag-handle">≡</span>
-                <button class="collapse-toggle icon-only" data-action="toggle-series" data-index="${seriesIndex}" title="${isCollapsed ? 'Expand' : 'Collapse'} Series">
+                <button class="drag-handle-btn small icon-only" title="Drag to reorder">
+                    <span class="drag-handle">≡</span>
+                </button>
+                <button class="collapse-toggle small icon-only" data-action="toggle-series" data-index="${seriesIndex}" title="${isCollapsed ? 'Expand' : 'Collapse'} Series">
                     <span class="collapse-icon">${isCollapsed ? '▸' : '▾'}</span>
+                </button>
+                <button class="context-menu-btn small icon-only" data-action="series-menu" data-index="${seriesIndex}" title="More options">
+                    <span>⋮</span>
                 </button>
                 <h4>Series ${seriesIndex + 1}${series.name ? ': ' + series.name : ''}</h4>
                 <button class="delete-btn small icon-only" data-action="delete-series" data-index="${seriesIndex}" title="Delete Series">
@@ -318,7 +323,12 @@ function renderEvents(events, seriesIndex) {
     return events.map((event, eventIndex) => `
         <div class="event-item" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" draggable="true">
             <div class="event-header">
-                <span class="drag-handle">≡</span>
+                <button class="drag-handle-btn small icon-only" title="Drag to reorder">
+                    <span class="drag-handle">≡</span>
+                </button>
+                <button class="context-menu-btn small icon-only" data-action="event-menu" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="More options">
+                    <span>⋮</span>
+                </button>
                 <span>Event ${eventIndex + 1}</span>
                 <button class="delete-btn small icon-only" data-action="delete-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
                     <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
@@ -384,6 +394,249 @@ function renderSelectedAudios(audioIds, seriesIndex, eventIndex) {
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Show context menu for series
+ */
+function showSeriesContextMenu(event, seriesIndex) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Remove any existing context menu
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
+    const program = editorState.program;
+    const totalSeries = program.series.length;
+    const isFirst = seriesIndex === 0;
+    const isLast = seriesIndex === totalSeries - 1;
+    
+    // Create context menu
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.innerHTML = `
+        <button data-action="move-series-top" data-index="${seriesIndex}" ${isFirst ? 'disabled' : ''}>Move to top</button>
+        <button data-action="move-series-up" data-index="${seriesIndex}" ${isFirst ? 'disabled' : ''}>Move up</button>
+        <button data-action="move-series-down" data-index="${seriesIndex}" ${isLast ? 'disabled' : ''}>Move down</button>
+        <button data-action="move-series-bottom" data-index="${seriesIndex}" ${isLast ? 'disabled' : ''}>Move to bottom</button>
+        <hr>
+        <button data-action="duplicate-series" data-index="${seriesIndex}">Duplicate</button>
+        <button data-action="delete-series-ctx" data-index="${seriesIndex}">Delete</button>
+    `;
+    
+    // Position the menu
+    const button = event.target.closest('button');
+    const rect = button.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = `${rect.bottom + 5}px`;
+    menu.style.left = `${rect.left}px`;
+    
+    document.body.appendChild(menu);
+    
+    // Close menu on click outside
+    const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    
+    // Handle menu actions
+    menu.addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        const index = parseInt(e.target.dataset.index);
+        
+        if (action === 'move-series-top') {
+            moveSeriesTo(index, 0);
+        } else if (action === 'move-series-up') {
+            moveSeriesTo(index, index - 1);
+        } else if (action === 'move-series-down') {
+            moveSeriesTo(index, index + 1);
+        } else if (action === 'move-series-bottom') {
+            moveSeriesTo(index, totalSeries - 1);
+        } else if (action === 'duplicate-series') {
+            duplicateSeries(index);
+        } else if (action === 'delete-series-ctx') {
+            if (confirm('Delete this series?')) {
+                editorState.program.series.splice(index, 1);
+                updateCollapsedSeriesAfterDeletion(index);
+                renderAllSeries();
+                renderTimelinePreview();
+            }
+        }
+        
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+    });
+}
+
+/**
+ * Show context menu for event
+ */
+function showEventContextMenu(event, seriesIndex, eventIndex) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Remove any existing context menu
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
+    const series = editorState.program.series[seriesIndex];
+    const totalEvents = series.events.length;
+    const isFirst = eventIndex === 0;
+    const isLast = eventIndex === totalEvents - 1;
+    
+    // Create context menu
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.innerHTML = `
+        <button data-action="move-event-top" data-series="${seriesIndex}" data-event="${eventIndex}" ${isFirst ? 'disabled' : ''}>Move to top</button>
+        <button data-action="move-event-up" data-series="${seriesIndex}" data-event="${eventIndex}" ${isFirst ? 'disabled' : ''}>Move up</button>
+        <button data-action="move-event-down" data-series="${seriesIndex}" data-event="${eventIndex}" ${isLast ? 'disabled' : ''}>Move down</button>
+        <button data-action="move-event-bottom" data-series="${seriesIndex}" data-event="${eventIndex}" ${isLast ? 'disabled' : ''}>Move to bottom</button>
+        <hr>
+        <button data-action="duplicate-event" data-series="${seriesIndex}" data-event="${eventIndex}">Duplicate</button>
+        <button data-action="delete-event-ctx" data-series="${seriesIndex}" data-event="${eventIndex}">Delete</button>
+    `;
+    
+    // Position the menu
+    const button = event.target.closest('button');
+    const rect = button.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = `${rect.bottom + 5}px`;
+    menu.style.left = `${rect.left}px`;
+    
+    document.body.appendChild(menu);
+    
+    // Close menu on click outside
+    const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    
+    // Handle menu actions
+    menu.addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        const sIndex = parseInt(e.target.dataset.series);
+        const eIndex = parseInt(e.target.dataset.event);
+        
+        if (action === 'move-event-top') {
+            moveEventTo(sIndex, eIndex, 0);
+        } else if (action === 'move-event-up') {
+            moveEventTo(sIndex, eIndex, eIndex - 1);
+        } else if (action === 'move-event-down') {
+            moveEventTo(sIndex, eIndex, eIndex + 1);
+        } else if (action === 'move-event-bottom') {
+            moveEventTo(sIndex, eIndex, totalEvents - 1);
+        } else if (action === 'duplicate-event') {
+            duplicateEvent(sIndex, eIndex);
+        } else if (action === 'delete-event-ctx') {
+            editorState.program.series[sIndex].events.splice(eIndex, 1);
+            renderAllSeries();
+            renderTimelinePreview();
+        }
+        
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+    });
+}
+
+/**
+ * Move series to a new position
+ */
+function moveSeriesTo(fromIndex, toIndex) {
+    const series = editorState.program.series.splice(fromIndex, 1)[0];
+    editorState.program.series.splice(toIndex, 0, series);
+    
+    // Update collapsed state
+    const wasCollapsed = editorState.collapsedSeries.has(fromIndex);
+    const newCollapsedSeries = new Set();
+    editorState.collapsedSeries.forEach(index => {
+        if (index === fromIndex) return; // Skip the moved item
+        if (fromIndex < toIndex) {
+            // Moving down
+            if (index > fromIndex && index <= toIndex) {
+                newCollapsedSeries.add(index - 1);
+            } else {
+                newCollapsedSeries.add(index);
+            }
+        } else {
+            // Moving up
+            if (index >= toIndex && index < fromIndex) {
+                newCollapsedSeries.add(index + 1);
+            } else {
+                newCollapsedSeries.add(index);
+            }
+        }
+    });
+    if (wasCollapsed) {
+        newCollapsedSeries.add(toIndex);
+    }
+    editorState.collapsedSeries = newCollapsedSeries;
+    
+    renderAllSeries();
+    renderTimelinePreview();
+}
+
+/**
+ * Move event to a new position
+ */
+function moveEventTo(seriesIndex, fromIndex, toIndex) {
+    const series = editorState.program.series[seriesIndex];
+    const event = series.events.splice(fromIndex, 1)[0];
+    series.events.splice(toIndex, 0, event);
+    
+    renderAllSeries();
+    renderTimelinePreview();
+}
+
+/**
+ * Duplicate a series
+ */
+function duplicateSeries(index) {
+    const series = editorState.program.series[index];
+    const duplicate = JSON.parse(JSON.stringify(series));
+    editorState.program.series.splice(index + 1, 0, duplicate);
+    
+    renderAllSeries();
+    renderTimelinePreview();
+}
+
+/**
+ * Duplicate an event
+ */
+function duplicateEvent(seriesIndex, eventIndex) {
+    const series = editorState.program.series[seriesIndex];
+    const event = series.events[eventIndex];
+    const duplicate = JSON.parse(JSON.stringify(event));
+    series.events.splice(eventIndex + 1, 0, duplicate);
+    
+    renderAllSeries();
+    renderTimelinePreview();
+}
+
+/**
+ * Update collapsed series indices after deletion
+ */
+function updateCollapsedSeriesAfterDeletion(deletedIndex) {
+    const newCollapsedSeries = new Set();
+    editorState.collapsedSeries.forEach(collapsedIndex => {
+        if (collapsedIndex < deletedIndex) {
+            newCollapsedSeries.add(collapsedIndex);
+        } else if (collapsedIndex > deletedIndex) {
+            newCollapsedSeries.add(collapsedIndex - 1);
+        }
+    });
+    editorState.collapsedSeries = newCollapsedSeries;
 }
 
 /**
@@ -469,45 +722,43 @@ function attachEditorListeners() {
     const seriesContainer = document.getElementById('series-container');
     
     seriesContainer.addEventListener('click', (e) => {
-        const target = e.target;
-        const action = target.dataset.action;
+        // Find the button element if we clicked on a child element
+        const button = e.target.closest('button');
+        if (!button) return;
+        
+        const action = button.dataset.action;
         
         if (action === 'toggle-series') {
-            const index = parseInt(target.dataset.index);
+            const index = parseInt(button.dataset.index);
             if (editorState.collapsedSeries.has(index)) {
                 editorState.collapsedSeries.delete(index);
             } else {
                 editorState.collapsedSeries.add(index);
             }
             renderAllSeries();
+        } else if (action === 'series-menu') {
+            const index = parseInt(button.dataset.index);
+            showSeriesContextMenu(e, index);
+        } else if (action === 'event-menu') {
+            const seriesIndex = parseInt(button.dataset.seriesIndex);
+            const eventIndex = parseInt(button.dataset.eventIndex);
+            showEventContextMenu(e, seriesIndex, eventIndex);
         } else if (action === 'delete-series') {
-            const index = parseInt(target.dataset.index);
+            const index = parseInt(button.dataset.index);
             if (confirm('Delete this series?')) {
                 editorState.program.series.splice(index, 1);
-                // Update collapsed series indices after deletion
-                const newCollapsedSeries = new Set();
-                editorState.collapsedSeries.forEach(collapsedIndex => {
-                    if (collapsedIndex < index) {
-                        // Series before deleted one keep their index
-                        newCollapsedSeries.add(collapsedIndex);
-                    } else if (collapsedIndex > index) {
-                        // Series after deleted one shift down by 1
-                        newCollapsedSeries.add(collapsedIndex - 1);
-                    }
-                    // Skip the deleted series index
-                });
-                editorState.collapsedSeries = newCollapsedSeries;
+                updateCollapsedSeriesAfterDeletion(index);
                 renderAllSeries();
                 renderTimelinePreview();
             }
         } else if (action === 'add-event') {
-            const seriesIndex = parseInt(target.dataset.seriesIndex);
+            const seriesIndex = parseInt(button.dataset.seriesIndex);
             editorState.program.series[seriesIndex].events.push(createEmptyEvent());
             renderAllSeries();
             renderTimelinePreview();
         } else if (action === 'delete-event') {
-            const seriesIndex = parseInt(target.dataset.seriesIndex);
-            const eventIndex = parseInt(target.dataset.eventIndex);
+            const seriesIndex = parseInt(button.dataset.seriesIndex);
+            const eventIndex = parseInt(button.dataset.eventIndex);
             if (confirm('Delete this event?')) {
                 editorState.program.series[seriesIndex].events.splice(eventIndex, 1);
                 renderAllSeries();

@@ -28,6 +28,17 @@ This directory contains investigation reports and documentation for the MSG Rota
    - When to use (or not use) the MCP server
    - 5-minute read
 
+4. **[shoelace-migration-epic.md](./shoelace-migration-epic.md)** 📋 **Implementation Plan**
+   - Complete 6-phase migration roadmap
+   - Detailed tasks, timelines, and dependencies
+   - Testing checklists and success metrics
+   - 20-minute read
+
+5. **[github-issues-template.md](./github-issues-template.md)** 🎫 **Issue Templates**
+   - Copy-paste templates for GitHub issues
+   - Epic + 6 sub-issue templates
+   - Ready for issue creation
+
 ### Key Findings
 
 🚨 **Critical:** Current application has **zero mobile responsiveness** (no media queries, fixed widths)

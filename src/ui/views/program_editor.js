@@ -110,6 +110,17 @@ function renderEventsView() {
     const container = document.getElementById('events-view-container');
     const program = editorState.program;
     
+    // Populate program details
+    const titleInput = document.getElementById('events-program-title');
+    const descInput = document.getElementById('events-program-description');
+    const idInput = document.getElementById('events-program-id');
+    const readonlyCheckbox = document.getElementById('events-program-readonly');
+    
+    if (titleInput) titleInput.value = program.title || '';
+    if (descInput) descInput.value = program.description || '';
+    if (idInput) idInput.value = program.id || '';
+    if (readonlyCheckbox) readonlyCheckbox.checked = program.readonly || false;
+    
     if (!program.series || program.series.length === 0) {
         container.innerHTML = '<p class="empty-message">No series added yet. Switch to Form tab to add series.</p>';
         return;
@@ -314,6 +325,34 @@ function renderEditor() {
             </div>
         </div>
         <div class="editor-tab-content" id="editor-tab-events">
+            <div class="events-view-program-details">
+                <h3>Program Details</h3>
+                <div class="form-group-inline">
+                    <label>Title:</label>
+                    <input type="text" id="events-program-title" placeholder="Program Title" />
+                </div>
+                <div class="form-group-inline">
+                    <label>Description:</label>
+                    <input type="text" id="events-program-description" placeholder="Program Description" />
+                </div>
+                ${editorState.isEditing ? `
+                <div class="form-group-inline">
+                    <label>ID:</label>
+                    <input type="number" id="events-program-id" placeholder="Program ID" />
+                </div>
+                ` : `
+                <div class="form-group-inline">
+                    <label>ID:</label>
+                    <input type="number" id="events-program-id" placeholder="Auto-generated if empty" />
+                </div>
+                `}
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="events-program-readonly" />
+                        Read-only (prevents deletion/editing)
+                    </label>
+                </div>
+            </div>
             <div class="events-view-header">
                 <div class="events-view-header-left">
                     <input type="checkbox" id="select-all-events-checkbox" title="Select all / none" />
@@ -1347,6 +1386,37 @@ function attachEditorListeners() {
 function attachEventsViewListeners() {
     const container = document.getElementById('events-view-container');
     if (!container) return;
+    
+    // Program details listeners
+    const titleInput = document.getElementById('events-program-title');
+    const descInput = document.getElementById('events-program-description');
+    const idInput = document.getElementById('events-program-id');
+    const readonlyCheckbox = document.getElementById('events-program-readonly');
+    
+    if (titleInput) {
+        titleInput.addEventListener('change', (e) => {
+            editorState.program.title = e.target.value;
+        });
+    }
+    
+    if (descInput) {
+        descInput.addEventListener('change', (e) => {
+            editorState.program.description = e.target.value;
+        });
+    }
+    
+    if (idInput) {
+        idInput.addEventListener('change', (e) => {
+            const value = parseInt(e.target.value);
+            editorState.program.id = isNaN(value) ? null : value;
+        });
+    }
+    
+    if (readonlyCheckbox) {
+        readonlyCheckbox.addEventListener('change', (e) => {
+            editorState.program.readonly = e.target.checked;
+        });
+    }
     
     // Expand/Collapse all buttons
     const expandAllBtn = document.getElementById('expand-all-series-btn');

@@ -540,9 +540,11 @@ function showEventContextMenu(event, seriesIndex, eventIndex) {
         } else if (action === 'duplicate-event') {
             duplicateEvent(sIndex, eIndex);
         } else if (action === 'delete-event-ctx') {
-            editorState.program.series[sIndex].events.splice(eIndex, 1);
-            renderAllSeries();
-            renderTimelinePreview();
+            if (confirm('Delete this event?')) {
+                editorState.program.series[sIndex].events.splice(eIndex, 1);
+                renderAllSeries();
+                renderTimelinePreview();
+            }
         }
         
         menu.remove();
@@ -740,8 +742,8 @@ function attachEditorListeners() {
             const index = parseInt(button.dataset.index);
             showSeriesContextMenu(e, index);
         } else if (action === 'event-menu') {
-            const seriesIndex = parseInt(button.dataset.seriesIndex);
-            const eventIndex = parseInt(button.dataset.eventIndex);
+            const seriesIndex = parseInt(button.getAttribute('data-series-index'));
+            const eventIndex = parseInt(button.getAttribute('data-event-index'));
             showEventContextMenu(e, seriesIndex, eventIndex);
         } else if (action === 'delete-series') {
             const index = parseInt(button.dataset.index);
@@ -752,13 +754,13 @@ function attachEditorListeners() {
                 renderTimelinePreview();
             }
         } else if (action === 'add-event') {
-            const seriesIndex = parseInt(button.dataset.seriesIndex);
+            const seriesIndex = parseInt(button.getAttribute('data-series-index'));
             editorState.program.series[seriesIndex].events.push(createEmptyEvent());
             renderAllSeries();
             renderTimelinePreview();
         } else if (action === 'delete-event') {
-            const seriesIndex = parseInt(button.dataset.seriesIndex);
-            const eventIndex = parseInt(button.dataset.eventIndex);
+            const seriesIndex = parseInt(button.getAttribute('data-series-index'));
+            const eventIndex = parseInt(button.getAttribute('data-event-index'));
             if (confirm('Delete this event?')) {
                 editorState.program.series[seriesIndex].events.splice(eventIndex, 1);
                 renderAllSeries();

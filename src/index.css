@@ -923,12 +923,14 @@ footer {
   flex-shrink: 0;
 }
 
+.form-group-inline input[type="text"],
 .form-group-inline input[type="number"] {
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 1rem;
   flex: 1;
+  min-height: 2.5rem;
 }
 
 .radio-group-inline {
@@ -961,6 +963,23 @@ footer {
 
 .checkbox-group input[type="checkbox"] {
   width: auto;
+}
+
+.checkbox-label-text {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.checkbox-help-text {
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.checkbox-group label:hover .checkbox-help-text {
+  opacity: 1;
 }
 
 .empty-message {
@@ -1709,6 +1728,18 @@ button.small {
   margin: 0 0 0.25rem 0;
   font-size: 1.1rem;
   color: #333;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.optional-badge {
+  font-size: 0.75rem;
+  font-weight: normal;
+  background: #ffc107;
+  color: #333;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
 }
 
 .series-meta {
@@ -1761,13 +1792,21 @@ button.small {
 
 .event-select {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 0.25rem;
 }
 
 .event-checkbox {
   width: 1.2rem;
   height: 1.2rem;
   cursor: pointer;
+}
+
+.event-number {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
 }
 
 
@@ -1792,11 +1831,26 @@ button.small {
   color: #666;
 }
 
-.event-detail-row.audio-list {
+.event-detail-row.audio-section {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.audio-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.audio-item {
+  padding: 0.25rem 0.5rem;
+  background: #f0f0f0;
+  border-radius: 4px;
   font-size: 0.85rem;
-  color: #555;
-  font-style: italic;
-  overflow: hidden;
+  color: #333;
+}
   text-overflow: ellipsis;
   white-space: nowrap;
 }

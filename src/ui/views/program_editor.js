@@ -138,8 +138,8 @@ function renderEventsView() {
                         <span class="toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
                     </button>
                     <div class="series-info">
-                        <h4>${series.name || `Series ${seriesIndex + 1}`}</h4>
-                        <span class="series-meta">${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s ${series.optional ? '• Optional' : ''}</span>
+                        <h4>${series.name || `Series ${seriesIndex + 1}`}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
+                        <span class="series-meta">${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s</span>
                     </div>
                     <div class="series-actions">
                         <div class="series-menu-container">
@@ -148,15 +148,10 @@ function renderEventsView() {
                             </button>
                             <div class="series-menu-dropdown" data-series-index="${seriesIndex}">
                                 <button class="menu-item" data-action="add-event-to-series" data-series-index="${seriesIndex}">
-                                    <span>Add Event</span>
+                                    <img src="public/icons/add_24_regular.svg" alt="Add Event" width="16" height="16" />
                                 </button>
                                 <button class="menu-item" data-action="duplicate-series" data-series-index="${seriesIndex}">
-                                    <img src="/icons/copy_24_regular.svg" alt="Copy" width="16" height="16" />
-                                    <span>Copy Series</span>
-                                </button>
-                                <button class="menu-item delete-item" data-action="delete-series-events-view" data-series-index="${seriesIndex}">
-                                    <img src="/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
-                                    <span>Delete Series</span>
+                                    <img src="public/icons/copy_24_regular.svg" alt="Copy Series" width="16" height="16" />
                                 </button>
                             </div>
                         </div>
@@ -179,40 +174,42 @@ function renderEventsView() {
                             <div class="events-view-item ${isSelected ? 'selected' : ''}" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" data-event-id="${eventId}" draggable="true" title="Drag to reorder">
                                 <div class="event-select">
                                     <input type="checkbox" class="event-checkbox" data-event-id="${eventId}" ${isSelected ? 'checked' : ''} />
+                                    <div class="event-number">${eventIndex + 1}</div>
                                 </div>
                                 <div class="event-details">
                                     <div class="event-detail-row">
-                                        <span class="event-label">Event ${eventIndex + 1}</span>
+                                        <span>Duration: ${(event.duration / 1000).toFixed(1)}s</span>
                                         <span class="event-command-badge ${event.command || 'none'}">${event.command ? event.command.toUpperCase() : 'NO CHANGE'}</span>
                                     </div>
-                                    <div class="event-detail-row secondary">
-                                        <span>Duration: ${event.duration}ms (${(event.duration / 1000).toFixed(1)}s)</span>
-                                        ${audioTitles ? `<span class="audio-badge" title="${audioTitles}">♫ ${(event.audio_ids || []).length} audio${(event.audio_ids || []).length !== 1 ? 's' : ''}</span>` : ''}
+                                    ${(event.audio_ids && event.audio_ids.length > 0) ? `
+                                    <div class="event-detail-row audio-section">
+                                        <span class="audio-badge">♫ ${event.audio_ids.length} audio${event.audio_ids.length !== 1 ? 's' : ''}</span>
+                                        <div class="audio-list-items">
+                                            ${event.audio_ids.map(id => {
+                                                const audio = editorState.audios.find(a => a.id === id);
+                                                return `<div class="audio-item">${audio ? audio.title : `ID ${id}`}</div>`;
+                                            }).join('')}
+                                        </div>
                                     </div>
-                                    ${audioTitles ? `<div class="event-detail-row audio-list">${audioTitles}</div>` : ''}
+                                    ` : ''}
                                 </div>
                                 <div class="event-actions">
-                                    <button class="icon-btn" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Edit Event">
-                                        <img src="/icons/edit_24_regular.svg" alt="Edit" width="20" height="20" />
-                                    </button>
                                     <div class="event-menu-container">
                                         <button class="icon-btn event-menu-btn" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="More actions">
                                             <span class="icon-text">⋮</span>
                                         </button>
                                         <div class="event-menu-dropdown" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                                            <button class="menu-item" data-action="edit-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
+                                                <img src="public/icons/edit_24_regular.svg" alt="Edit Event" width="16" height="16" />
+                                            </button>
                                             <button class="menu-item" data-action="duplicate-event" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                                                <img src="/icons/copy_24_regular.svg" alt="Copy" width="16" height="16" />
-                                                <span>Copy Event</span>
+                                                <img src="public/icons/copy_24_regular.svg" alt="Copy Event" width="16" height="16" />
                                             </button>
                                             <button class="menu-item delete-item" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}">
-                                                <img src="/icons/delete_24_regular.svg" alt="Delete" width="16" height="16" />
-                                                <span>Delete Event</span>
+                                                <img src="public/icons/delete_24_regular.svg" alt="Delete Event" width="16" height="16" />
                                             </button>
                                         </div>
                                     </div>
-                                    <button class="icon-btn delete-btn" data-action="delete-event-events-view" data-series-index="${seriesIndex}" data-event-index="${eventIndex}" title="Delete Event">
-                                        <img src="/icons/delete_24_regular.svg" alt="Delete" width="20" height="20" />
-                                    </button>
                                 </div>
                             </div>
                         `;
@@ -349,7 +346,10 @@ function renderEditor() {
                 <div class="checkbox-group">
                     <label>
                         <input type="checkbox" id="events-program-readonly" />
-                        Read-only (prevents deletion/editing)
+                        <span class="checkbox-label-text">
+                            Read-only
+                            <span class="checkbox-help-text">(prevents deletion/editing)</span>
+                        </span>
                     </label>
                 </div>
             </div>

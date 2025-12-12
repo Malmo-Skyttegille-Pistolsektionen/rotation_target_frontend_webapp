@@ -57,23 +57,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // Helper function to update both desktop and mobile tab states
   function setActiveTab(tab) {
-    // Desktop tabs
-    runTabButton.classList.toggle("active", tab === "run");
-    audioTabButton.classList.toggle("active", tab === "audio");
-    programsTabButton.classList.toggle("active", tab === "programs");
-    settingsTabButton.classList.toggle("active", tab === "settings");
+    const tabs = [
+      { desktop: runTabButton, mobile: mobileRunTabButton, name: "run" },
+      { desktop: audioTabButton, mobile: mobileAudioTabButton, name: "audio" },
+      { desktop: programsTabButton, mobile: mobileProgramsTabButton, name: "programs" },
+      { desktop: settingsTabButton, mobile: mobileSettingsTabButton, name: "settings" }
+    ];
     
-    // Mobile tabs
-    mobileRunTabButton.classList.toggle("active", tab === "run");
-    mobileAudioTabButton.classList.toggle("active", tab === "audio");
-    mobileProgramsTabButton.classList.toggle("active", tab === "programs");
-    mobileSettingsTabButton.classList.toggle("active", tab === "settings");
+    const sections = [
+      { element: runSection, name: "run" },
+      { element: audioSection, name: "audio" },
+      { element: programsSection, name: "programs" },
+      { element: settingsSection, name: "settings" }
+    ];
     
-    // Sections
-    runSection.classList.toggle("hidden", tab !== "run");
-    audioSection.classList.toggle("hidden", tab !== "audio");
-    programsSection.classList.toggle("hidden", tab !== "programs");
-    settingsSection.classList.toggle("hidden", tab !== "settings");
+    // Update tab states
+    tabs.forEach(({ desktop, mobile, name }) => {
+      const isActive = name === tab;
+      desktop?.classList.toggle("active", isActive);
+      mobile?.classList.toggle("active", isActive);
+    });
+    
+    // Update section visibility
+    sections.forEach(({ element, name }) => {
+      element?.classList.toggle("hidden", name !== tab);
+    });
   }
   // Tab switching logic - Desktop
   runTabButton.addEventListener("click", async () => {

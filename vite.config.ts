@@ -263,7 +263,9 @@ export default defineConfig({
           src: 'node_modules/@shoelace-style/shoelace/dist/assets',
           dest: 'shoelace-assets'
         }
-      ]
+      ],
+      // Ensure errors are reported if source directory is missing
+      structured: true
     }),
     // {
     //   name: 'requestLogger',

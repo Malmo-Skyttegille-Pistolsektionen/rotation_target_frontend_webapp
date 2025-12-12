@@ -138,14 +138,13 @@ function renderEventsView() {
                         <span class="toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
                     </button>
                     <div class="series-info">
-                        <h4>${series.name || `Series ${seriesIndex + 1}`}</h4>
+                        <h4>${series.name || `Series ${seriesIndex + 1}`}${series.optional ? ' <span class="optional-badge">Optional</span>' : ''}</h4>
                         <span class="series-meta">${totalEvents} event${totalEvents !== 1 ? 's' : ''} • ${(totalDuration / 1000).toFixed(1)}s</span>
                     </div>
                     <div class="series-actions">
-                        <label class="series-optional-checkbox">
-                            <input type="checkbox" class="series-optional-input" data-series-index="${seriesIndex}" ${series.optional ? 'checked' : ''} />
-                            <span>Optional</span>
-                        </label>
+                        <button class="icon-btn" data-action="edit-series" data-series-index="${seriesIndex}" title="Edit Series">
+                            <img src="/icons/edit_24_regular.svg" alt="Edit" width="20" height="20" />
+                        </button>
                         <button class="icon-btn" data-action="duplicate-series" data-series-index="${seriesIndex}" title="Copy Series">
                             <img src="public/icons/copy_24_regular.svg" alt="Copy" width="20" height="20" />
                         </button>
@@ -1371,7 +1370,16 @@ function attachEditorListeners() {
 /**
  * Attach event listeners to the events view
  */
+// Track if we've already initialized event listeners
+if (!window.eventsViewListenersInitialized) {
+    window.eventsViewListenersInitialized = false;
+}
+
 function attachEventsViewListeners() {
+    // Only initialize listeners once - they use event delegation on persistent parents
+    if (window.eventsViewListenersInitialized) return;
+    window.eventsViewListenersInitialized = true;
+    
     const container = document.getElementById('events-view-container');
     if (!container) return;
     
@@ -1512,6 +1520,8 @@ function attachEventsViewListeners() {
                     renderEventsView();
                     renderTimelinePreview();
                 }
+            } else if (action === 'edit-series') {
+                openSeriesEditModal(seriesIndex);
             } else if (action === 'duplicate-series') {
                 const clonedSeries = JSON.parse(JSON.stringify(editorState.program.series[seriesIndex]));
                 clonedSeries.name = (clonedSeries.name || 'Series') + ' (Copy)';
@@ -1547,12 +1557,6 @@ function attachEventsViewListeners() {
             renderEventsView();
         }
         
-        // Series optional checkbox
-        if (e.target.classList.contains('series-optional-input')) {
-            const seriesIndex = parseInt(e.target.dataset.seriesIndex);
-            editorState.program.series[seriesIndex].optional = e.target.checked;
-            renderTimelinePreview();
-        }
     });
     
     // Select-all checkbox
@@ -1784,6 +1788,78 @@ function attachEventsViewListeners() {
     container.querySelectorAll('.events-view-item').forEach(item => {
         item.setAttribute('tabindex', '0');
     });
+}
+
+/**
+ * Open modal to edit event details
+ */
+/**
+ * Open modal to edit series details
+ */
+function openSeriesEditModal(seriesIndex) {
+    const series = editorState.program.series[seriesIndex];
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Series ${seriesIndex + 1}</h2>
+                <button class="close-btn" id="close-series-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group-inline">
+                    <label>Name:</label>
+                    <input type="text" id="series-modal-name" value="${series.name || ''}" placeholder="Series Name" />
+                </div>
+                <div class="form-group-inline">
+                    <label>Optional:</label>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="series-modal-optional" ${series.optional ? 'checked' : ''} />
+                            <span>This series is optional</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary" id="cancel-series-modal">Cancel</button>
+                <button class="primary" id="save-series-modal">Save</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Attach event listeners
+    const closeBtn = modal.querySelector('#close-series-modal');
+    const cancelBtn = modal.querySelector('#cancel-series-modal');
+    const saveBtn = modal.querySelector('#save-series-modal');
+    
+    const closeModal = () => {
+        document.body.removeChild(modal);
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    
+    saveBtn.addEventListener('click', () => {
+        const name = modal.querySelector('#series-modal-name').value;
+        const optional = modal.querySelector('#series-modal-optional').checked;
+        
+        editorState.program.series[seriesIndex].name = name;
+        editorState.program.series[seriesIndex].optional = optional;
+        
+        closeModal();
+        renderEventsView();
+        renderTimelinePreview();
+    });
+    
+    // Focus the name input
+    setTimeout(() => {
+        modal.querySelector('#series-modal-name').focus();
+    }, 100);
 }
 
 /**

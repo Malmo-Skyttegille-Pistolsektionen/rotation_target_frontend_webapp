@@ -100,8 +100,12 @@ export function closeProgramEditor() {
         audios: [],
         timelineMode: null,
         collapsedSeries: new Set(),
-        selectedEvents: new Set()
+        selectedEvents: new Set(),
+        timelineZoom: 1,
+        timelineSelectedSeries: null
     };
+    // Reset timeline listeners flag so they can be reattached for the next program
+    window.timelineEditorListenersInitialized = false;
 }
 
 /**
@@ -469,6 +473,7 @@ function attachTabListeners() {
             
             // If switching to timeline tab, render timeline editor
             if (targetTab === 'timeline') {
+                attachTimelineEditorListeners(); // Attach listeners first time
                 renderTimelineEditor();
             }
         });
@@ -1963,53 +1968,55 @@ function renderTimelineEditor() {
             : `${totalEvents} events total`;
     }
     
-    attachTimelineEditorListeners();
 }
 
 /**
  * Attach event listeners to timeline editor
  */
+// Track if we've already initialized timeline listeners
+if (!window.timelineEditorListenersInitialized) {
+    window.timelineEditorListenersInitialized = false;
+}
+
 function attachTimelineEditorListeners() {
+    // Only initialize listeners once - they use event delegation on persistent parents
+    if (window.timelineEditorListenersInitialized) return;
+    window.timelineEditorListenersInitialized = true;
+    
     const container = document.getElementById('timeline-editor-content');
     if (!container) return;
     
-    // Series selector
-    const seriesSelect = document.getElementById('timeline-series-select');
-    if (seriesSelect) {
-        seriesSelect.addEventListener('change', (e) => {
+    // Series selector - on persistent header, so need to check on each call
+    const timelineEditorContainer = document.getElementById('editor-tab-timeline');
+    if (!timelineEditorContainer) return;
+    
+    // Use event delegation for series selector changes
+    timelineEditorContainer.addEventListener('change', (e) => {
+        if (e.target.id === 'timeline-series-select') {
             const value = e.target.value;
             editorState.timelineSelectedSeries = value === '' ? null : parseInt(value);
             renderTimelineEditor();
-        });
-    }
+        }
+    });
     
-    // Zoom controls
-    const zoomInBtn = document.getElementById('timeline-zoom-in');
-    const zoomOutBtn = document.getElementById('timeline-zoom-out');
-    const zoomFitBtn = document.getElementById('timeline-zoom-fit');
-    
-    if (zoomInBtn) {
-        zoomInBtn.addEventListener('click', () => {
+    // Use event delegation for zoom controls
+    timelineEditorContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        
+        if (btn.id === 'timeline-zoom-in') {
             editorState.timelineZoom = Math.min(3, editorState.timelineZoom * 1.2);
             renderTimelineEditor();
-        });
-    }
-    
-    if (zoomOutBtn) {
-        zoomOutBtn.addEventListener('click', () => {
+        } else if (btn.id === 'timeline-zoom-out') {
             editorState.timelineZoom = Math.max(0.3, editorState.timelineZoom / 1.2);
             renderTimelineEditor();
-        });
-    }
-    
-    if (zoomFitBtn) {
-        zoomFitBtn.addEventListener('click', () => {
+        } else if (btn.id === 'timeline-zoom-fit') {
             editorState.timelineZoom = 1;
             renderTimelineEditor();
-        });
-    }
+        }
+    });
     
-    // Event selection via checkboxes
+    // Event selection via checkboxes - use event delegation on container
     container.addEventListener('change', (e) => {
         if (e.target.classList.contains('timeline-event-checkbox')) {
             const eventId = e.target.dataset.eventId;
@@ -2022,8 +2029,9 @@ function attachTimelineEditorListeners() {
         }
     });
     
-    // Event actions
+    // Event actions - use event delegation on container
     container.addEventListener('click', (e) => {
+        // Handle action buttons (edit, copy, delete)
         const actionBtn = e.target.closest('[data-action]');
         if (actionBtn) {
             const action = actionBtn.dataset.action;
@@ -2043,11 +2051,12 @@ function attachTimelineEditorListeners() {
                     renderTimelinePreview();
                 }
             }
+            return; // Don't process event selection if we clicked an action button
         }
         
-        // Click on event to select/deselect
+        // Click on event to select/deselect (only if not clicking checkbox or action button)
         const timelineEvent = e.target.closest('.timeline-event');
-        if (timelineEvent && !e.target.closest('.timeline-event-checkbox') && !e.target.closest('[data-action]')) {
+        if (timelineEvent && !e.target.closest('.timeline-event-checkbox')) {
             const eventId = timelineEvent.dataset.eventId;
             if (editorState.selectedEvents.has(eventId)) {
                 editorState.selectedEvents.delete(eventId);
